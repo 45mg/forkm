@@ -1,0 +1,114 @@
+#!/bin/sh
+# forkm: fork management tool
+# TODO license etc
+
+set -eu
+
+export FORKM_VERSION=0.1.0
+FORKM_PATH="$(dirname "$0")"
+export FORKM_PATH
+
+GIT_DIR="$(git rev-parse --absolute-git-dir)"
+export GIT_DIR
+# Not all commands require a worktree, but we set this for the ones that do:
+export GIT_WORK_TREE="${GIT_DIR}"/..
+
+show_help() {
+    cat <<EOF
+usage: forkm [OPTIONS...] COMMAND ARGS...
+
+Run COMMAND with ARGS, if given.
+
+COMMAND must be one of the sub-commands listed below:
+
+track | add    track a patch branch
+untrack | rm   untrack a patch branch
+list | ls      list tracked patch branches
+
+bump           rebase patch branches onto the branch tip
+patch          cherry-pick patch branches and merge them in
+unpatch        undo the 'patch' command
+update         get new commits from an upstream branch
+
+OPTOINS may be:
+-R DIRECTORY   use repository in DIRECTORY
+-h, --help     show this message and exit
+-V, --version  show version information and exit
+EOF
+}
+
+if [ $# -eq 0 ]; then
+    show_help
+    exit 1
+fi
+
+
+while [ $# -gt 0 ]; do
+    case $1 in
+        -R)
+            if [ $# -lt 2 ]; then
+                printf >&2 "forkm: '-R' requires an argument\n"
+                exit 1
+            fi
+            shift
+            unset GIT_DIR
+            GIT_DIR="$(git -C "$1" rev-parse --absolute-git-dir)"
+            export GIT_DIR
+            export GIT_WORK_TREE="${GIT_DIR}"/..
+            shift
+            ;;
+        -V | --version)
+            printf "forkm: version %s\n" "${FORKM_VERSION}"
+            exit 0
+            ;;
+        -h | --help)
+            show_help
+            exit 0
+            ;;
+        -*)
+            printf >&2 "forkm: Invalid flag '%s'\n" "$1"
+            show_help
+            exit 1
+            ;;
+        *) # not a flag; handle this as subcommand and pass further args to it
+            break
+            ;;
+    esac
+done
+
+if [ $# -eq 0 ]; then
+    show_help
+    exit 1
+fi
+
+forkm_command="$1"
+shift
+
+case "${forkm_command}" in
+    track | add)
+        "${FORKM_PATH}"/forkm-track "$@"
+        ;;
+    untrack | rm)
+        "${FORKM_PATH}"/forkm-untrack "$@"
+        ;;
+    list | ls)
+        "${FORKM_PATH}"/forkm-list "$@"
+        ;;
+    bump)
+        "${FORKM_PATH}"/forkm-bump "$@"
+        ;;
+    patch)
+        "${FORKM_PATH}"/forkm-patch "$@"
+        ;;
+    unpatch)
+        "${FORKM_PATH}"/forkm-unpatch "$@"
+        ;;
+    update)
+        "${FORKM_PATH}"/forkm-update "$@"
+        ;;
+    *)
+        printf >&2 "forkm: invalid command\n"
+        show_help
+        exit 1
+        ;;
+esac

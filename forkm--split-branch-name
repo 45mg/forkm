@@ -1,0 +1,29 @@
+#!/bin/sh
+# TODO license etc
+
+show_help() {
+    cat <<EOF
+usage: forkm--split-branch-name <branch_name>
+
+Internal command.
+Attempt to split the version number suffix from a branch name.
+eg. split 'foo-bar-v3' into 'foo-bar' and '-v3'.
+If we succeed, output the branch name and version number separated by a space.
+Otherwise, output the original input.
+EOF
+}
+
+if [ $# -ne 1 ]; then
+    show_help
+    exit 1
+fi
+
+name=$(echo "$1" | sed -E 's/-v[0-9]+$//')
+version_suffix=
+if [ "${name}" != "$1" ]; then
+    version_suffix="${1##"$name"}"
+    version_number="${version_suffix##-v}"
+    printf '%s %s\n' "${name}" "${version_number}"
+else
+    printf '%s\n' "$1"
+fi

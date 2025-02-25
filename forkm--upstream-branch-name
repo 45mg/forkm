@@ -1,0 +1,20 @@
+#!/bin/sh
+# TODO license etc
+
+show_help() {
+    cat <<EOF
+usage: forkm--upstream-branch-name <branch_name>
+
+Internal command.
+Try to guess the desired upstream branch name.
+EOF
+}
+
+if [ -n "$(git branch --list main)" ]; then
+    printf '%s\n' main
+elif [ -n "$(git branch --list master)" ]; then
+    printf '%s\n' master
+else
+    printf >&2 "forkm--upstream-branch-name: unable to determine upstream branch name"
+    exit 1
+fi

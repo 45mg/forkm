@@ -1,0 +1,92 @@
+#!/bin/sh
+# TODO license etc
+
+set -eu
+
+show_help() {
+    cat <<EOF
+usage: forkm untrack <branch>...
+
+Untrack one or more tracked patch branches.
+
+Options:
+-c, --cleanup  remove all dangling trackers
+-h, --help     show this message and exit
+-V, --version  show version information and exit
+EOF
+}
+
+if [ $# -eq 0 ]; then
+    show_help
+    exit 1
+fi
+
+cleanup() {
+    for refpath in "${GIT_DIR}"/refs/forkm/*; do
+        ref="${refpath#"$GIT_DIR"/}"
+        branch="$(git symbolic-ref --short -- "$ref")"
+        if [ -z "$(git branch --list -- "${branch}")" ]; then
+            git symbolic-ref -d "${ref}"
+        fi
+    done
+}
+
+branch_list=""
+# Parse arguments
+while [ $# -gt 0 ]; do
+    case $1 in
+        -h | --help)
+            show_help
+            exit 0
+            ;;
+        -V | --version)
+            printf "forkm: version %s\n" "${FORKM_VERSION}"
+            exit 0
+            ;;
+        -c | --cleanup)
+            cleanup
+            exit 0
+            ;;
+        -*) # Invalid options.
+            printf >&2 "forkm-untrack: Invalid flag '%s'\n" "$1"
+            show_help
+            exit 1
+            ;;
+        *)
+            # We have a flagless option; add it as one of the branches.
+            branch_list="${branch_list} $1"
+            shift
+            ;;
+    esac
+done
+
+for branch in ${branch_list}; do
+    untracked=0
+    nonexistent=0
+
+    read -r name _ <<-EOF
+	$("${FORKM_PATH}"/forkm--split-branch-name "${branch}")
+	EOF
+    if ! git symbolic-ref --short -- refs/forkm/"${name}" >/dev/null 2>&1; then
+        untracked=1
+    fi
+    if [ -z "$(git branch --list -- "${branch}")" ]; then
+        nonexistent=1
+    fi
+
+    if [ $nonexistent -eq 1 ] && [ $untracked -eq 1 ]; then
+        printf >&2 "forkm-untrack: warning: branch '%s' nonexistent and untracked; skipping\n" \
+            "${branch}"
+        continue
+    elif [ $nonexistent -eq 0 ] && [ $untracked -eq 1 ]; then
+        printf >&2 "forkm-untrack: warning: branch '%s' untracked; skipping\n" \
+            "${branch}"
+        continue
+    fi
+
+    if [ $nonexistent -eq 1 ] && [ $untracked -eq 0 ]; then
+        printf >&2 "forkm-untrack: removing dangling tracker for nonexistent branch '%s'\n" \
+            "${branch}"
+    fi
+    git symbolic-ref -d -- refs/forkm/"${name}"
+done

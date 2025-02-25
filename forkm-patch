@@ -1,0 +1,108 @@
+#!/bin/sh
+# TODO license etc
+
+set -eu
+
+show_help() {
+    cat <<EOF
+usage: forkm patch <fork_branch> [<upstream_branch>]
+
+Cherry-pick and merge all tracked patch branches into <fork_branch>.
+
+For every tracked patch branch <branch>, this will cherry pick its commits onto
+<fork_branch> is on, then create a branch named '<fork_branch>_<branch>' on the
+resulting HEAD.
+
+Then, all the new branches will be merged into <fork_branch>, unless '-P' is
+given.
+
+The merge-base of each patch branch with <upstream_branch> is taken as its base
+commit. <upstream_branch> defaults to 'main' or 'master', in that order; you can
+specify any ref or commit.
+
+Options:
+-p, --only-pick    cherry-pick into new branches, but don't merge them in
+-m, --only-merge   just merge in previously created new branches
+-h, --help         show this message and exit
+-V, --version      show version information and exit
+EOF
+}
+
+if [ $# -eq 0 ]; then
+    show_help
+    exit 1
+fi
+
+only_pick=0
+only_merge=0
+# Parse flags
+while [ $# -ne 0 ]; do
+    case $1 in
+        -h | --help)
+            show_help
+            exit 0
+            ;;
+        -V | --version)
+            printf "forkm: version %s\n" "${FORKM_VERSION}"
+            exit 0
+            ;;
+        -p | --only-pick)
+            only_pick=1
+            shift
+            ;;
+        -m | --only-merge)
+            only_merge=1
+            shift
+            ;;
+        -*) # Invalid options.
+            printf >&2 "forkm-patch: Invalid flag '%s'\n" "$1"
+            show_help
+            exit 1
+            ;;
+        *)
+            # Ignore anything else
+            break
+            ;;
+    esac
+done
+
+if [ $# -eq 0 ] || [ $# -gt 2 ]; then
+    show_help
+    exit 1
+fi
+fork="$1"
+shift
+upstream=""
+if [ $# -eq 1 ]; then
+    upstream="$1"
+else
+    read -r upstream <<EOF
+	$("${FORKM_PATH}"/forkm--upstream-branch-name)
+EOF
+fi
+
+patch_branch_list="$("${FORKM_PATH}"/forkm-list --oneline)"
+new_branch_list=""
+
+for branch in ${patch_branch_list}; do
+    new_branch="${fork}"_"${branch}"
+    new_branch_list="${new_branch_list} ${new_branch}"
+    if [ ${only_merge} -eq 0 ]; then
+        if [ -z "$(git branch --list -- "${new_branch}")" ] ||
+               [ "$(git merge-base -- "${fork}" "${new_branch}")" \
+                   != "$(git rev-parse -- "${fork}")" ]; then
+            printf "forkm: Cherry-picking %s onto '%s' as %s...\n" \
+                "${branch}" "${fork}" "${new_branch}"
+            git branch -f -- "${new_branch}" "${fork}"
+            git switch --quiet "${new_branch}"
+            git cherry-pick -- "${upstream}".."${branch}"
+        fi
+    fi
+done
+
+if [ ${only_pick} -eq 0 ]; then
+    for branch in ${new_branch_list}; do
+        git switch --quiet -- "${fork}"
+        git merge --no-ff --no-edit -- "$branch"
+    done
+fi

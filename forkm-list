@@ -1,0 +1,78 @@
+#!/bin/sh
+# TODO license etc
+
+set -eu
+
+show_help() {
+    cat <<EOF
+usage: forkm list
+
+List all tracked patch branches.
+
+Options:
+-q, --quiet    no annotations
+-o, --oneline  --quiet, and space-separated output
+-h, --help     show this message and exit
+-V, --version  show version information and exit
+EOF
+}
+
+branch_list=""
+quiet=0
+oneline=0
+# Parse arguments
+while [ $# -gt 0 ]; do
+    case $1 in
+        -h | --help)
+            show_help
+            exit 0
+            ;;
+        -V | --version)
+            printf "forkm: version %s\n" "${FORKM_VERSION}"
+            exit 0
+            ;;
+        -q | --quiet)
+            quiet=1
+            shift
+            ;;
+        -o | --oneline)
+            oneline=1
+            shift
+            ;;
+        -*) # Invalid options.
+            printf >&2 "forkm-list: Invalid flag '%s'\n" "$1"
+            show_help
+            exit 1
+            ;;
+        *)
+            # We don't accept non-flags for this subcommand
+            show_help
+            exit 1
+            ;;
+    esac
+done
+
+format='%s'
+if [ $oneline -ne 0 ]; then
+    format="${format} "
+else
+    format="${format}"'\n'
+fi
+
+# list the target of every tracker.
+for refpath in "${GIT_DIR}"/refs/forkm/*; do
+    # exit immediately if the glob doesn't expand (no refs)
+    [ "$refpath" = "${GIT_DIR}/refs/forkm/*" ] && exit 0
+    ref="${refpath#"$GIT_DIR"/}"
+    branch="$(git symbolic-ref --short -- "$ref")"
+    if [ -z "$(git branch --list -- "${branch}")" ]; then
+        if [ $quiet -eq 0 ]; then
+            printf >&2 "forkm-list: warning: dangling tracker %s\n" "${ref}"
+            printf >&2 "forkm-list: hint: did you delete the corresponding tracked branch?\n"
+        fi
+    else
+        printf "${format}" "${branch}"
+    fi
+done
+[ $oneline -ne 0 ] && printf '\n'
+exit 0

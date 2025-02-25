@@ -1,0 +1,339 @@
+#!/bin/sh
+# TODO license etc
+
+set -eu
+
+FORKM_PATH="$(dirname "$0")"
+FORKM_PATH="$(realpath "${FORKM_PATH}")"
+
+echo "Pass '--debug' for extra output."
+debug=0
+if [ $# -ge 1 ] && [ "$1" = '--debug' ]; then
+    debug=1
+fi
+
+cleanup() {
+    if [ -d "${testdir}" ]; then
+        chmod -Rf +w "${testdir}"
+        rm -rf "${testdir}"
+    fi
+    if [ -d "${remotedir}" ]; then
+        chmod -Rf +w "${remotedir}"
+        rm -rf "${remotedir}"
+    fi
+}
+testdir="$(mktemp -d)"
+remotedir="$(mktemp -d)"
+trap cleanup EXIT
+
+git_C() {
+    git -C "${testdir}" "$@"
+}
+git_C_quiet() {
+    if [ ${debug}  -eq 1 ]; then
+        git_C "$@"
+    else
+        git_C "$@" > /dev/null 2>&1
+    fi
+}
+forkm_R() {
+    "${FORKM_PATH}"/forkm -R "${testdir}" "$@"
+}
+forkm_R_quiet() {
+    if [ ${debug}  -eq 1 ]; then
+        forkm_R "$@"
+    else
+        forkm_R "$@" > /dev/null 2>&1
+    fi
+}
+
+git_C_log_subject_only() {
+    git_C log -z --pretty=format:%s "$1" | tr '\0' ' '
+}
+
+debug_git_C_log() {
+    if [ ${debug} -eq 1 ]; then
+        git_C --no-pager log --graph --all --oneline
+    fi
+}
+
+init_repo() {
+    mkdir -p "${testdir}"
+    git_C_quiet init --quiet --initial-branch=main
+    git_C_quiet config user.name forkm_test
+    git_C_quiet config user.email forkm_test@no.mail
+    git_C_quiet commit --quiet --allow-empty -m 'Initial commit'
+    git_C_quiet tag init
+}
+init_remote() {
+    cp -r "${testdir}"/.git "${remotedir}"
+    git -C "${remotedir}" config core.bare true
+    git_C_quiet remote add origin "${remotedir}"
+}
+
+echo "If any test fails, this script will immediately exit with a nonzero exit status."
+
+echo "Testing that we have the commands we need..."
+echo "...from coreutils"
+command -v realpath > /dev/null || exit 1
+command -v dirname > /dev/null || exit 1
+command -v mkdir > /dev/null || exit 1
+command -v mv > /dev/null || exit 1
+command -v rm > /dev/null || exit 1
+command -v cat > /dev/null || exit 1
+command -v printf > /dev/null || exit 1
+command -v tr > /dev/null || exit 1 # tests only
+echo "...sed"
+command -v sed > /dev/null || exit 1
+echo "...git"
+command -v git > /dev/null || exit 1
+
+echo "Testing 'forkm track'..."
+init_repo
+
+echo "...on branches with no version suffix"
+for b in b1 b2-v-12; do
+    git_C_quiet branch "$b"
+    forkm_R_quiet track "$b"
+    test "$(git_C rev-parse --symbolic-full-name refs/forkm/"$b")" \
+        = refs/heads/"$b"
+done
+
+echo "...on branches with version suffixes"
+git_C_quiet branch b3-v12
+git_C_quiet branch b4-v1-v23
+forkm_R_quiet track b3-v12 b4-v1-v23
+test "$(git_C rev-parse --symbolic-full-name refs/forkm/b3)" \
+    = refs/heads/b3-v12
+test "$(git_C rev-parse --symbolic-full-name refs/forkm/b4-v1)" \
+    = refs/heads/b4-v1-v23
+
+echo "...on nonexistent branches (should not track)"
+forkm_R_quiet track dangling
+git_C_quiet rev-parse --symbolic-full-name refs/forkm/dangling &&
+    exit 1
+
+echo "Testing 'forkm list'..."
+echo "...--quiet and --oneline output"
+test "$(forkm_R list --quiet)" \
+    = 'b1
+b2-v-12
+b3-v12
+b4-v1-v23'
+test "$(forkm_R list --oneline)" \
+    = 'b1 b2-v-12 b3-v12 b4-v1-v23 '
+echo "...output with dangling trackers"
+git_C_quiet branch --quiet dangling
+forkm_R_quiet track dangling
+git_C_quiet branch --quiet -D dangling
+test "$(forkm_R list --quiet)" \
+    = 'b1
+b2-v-12
+b3-v12
+b4-v1-v23'
+echo "...when there are no trackers"
+mv "${testdir}/.git/refs/forkm" "${testdir}/.git/refs/forkm_"
+test -z "$(forkm_R list)"
+mv "${testdir}/.git/refs/forkm_" "${testdir}/.git/refs/forkm"
+
+echo "Testing 'forkm untrack'..."
+echo "...on valid trackers"
+forkm_R_quiet untrack b1 b2-v-12
+git_C_quiet rev-parse --symbolic-full-name refs/forkm/b1 &&
+    exit 1
+git_C_quiet rev-parse --symbolic-full-name refs/forkm/b2-v-12 &&
+    exit 1
+echo "...on a dangling tracker"
+forkm_R_quiet untrack dangling
+git_C_quiet rev-parse --symbolic-full-name refs/forkm/dangling &&
+    exit 1
+echo "...--cleanup of all dangling trackers"
+for i in 1 2 3; do
+    git_C_quiet branch --quiet dangling"$i"
+    forkm_R_quiet track dangling"$i"
+    git_C_quiet branch --quiet -D dangling"$i"
+done
+forkm_R_quiet untrack --cleanup
+for i in 1 2 3; do
+    git_C_quiet rev-parse --symbolic-full-name refs/forkm/dangling"$i" &&
+        exit 1
+done
+echo "...on a nonexistent tracker"
+forkm_R_quiet untrack _nonexistent_
+
+echo "Testing pushing to a remote without errors..."
+init_remote
+echo "...pushing main branch only"
+git_C_quiet push --set-upstream origin main
+echo "...pushing all refs"
+git_C_quiet push origin '*:*'
+echo "...pushing all refs after deleting a tracked branch"
+git_C_quiet branch -D b3-v12
+git_C_quiet push origin '*:*'
+
+init_fork() {
+    init_repo
+    git_C_quiet branch fork
+    for i in 1 2 3; do
+        git_C_quiet commit --allow-empty -m m"$i"
+    done
+    git_C_quiet switch fork
+    git_C_quiet commit --allow-empty -m "f1"
+    git_C_quiet tag fork_init
+}
+
+echo "Testing 'forkm update'..."
+
+echo "...merges the right parents"
+cleanup
+init_fork
+forkm_R_quiet update fork main
+debug_git_C_log
+test "$(git_C rev-parse HEAD^)" = "$(git_C rev-parse fork_init)"
+test "$(git_C rev-parse HEAD^2)" = "$(git_C rev-parse main)"
+
+# The next 2 cases depend on forkm--upstream-branch-name, which is used in the
+# remaining commands as well; so we don't directly test upstream branch
+# detection for the other commands
+echo "......detecting the 'main' branch as upstream"
+cleanup
+init_fork
+forkm_R_quiet update fork
+debug_git_C_log
+test "$(git_C rev-parse HEAD^)" = "$(git_C rev-parse fork_init)"
+test "$(git_C rev-parse HEAD^2)" = "$(git_C rev-parse main)"
+echo "......detecting the 'master' branch as upstream"
+cleanup
+init_fork
+git_C_quiet branch -m main master
+forkm_R_quiet update fork
+debug_git_C_log
+test "$(git_C rev-parse HEAD^)" = "$(git_C rev-parse fork_init)"
+test "$(git_C rev-parse HEAD^2)" = "$(git_C rev-parse master)"
+
+echo "...'--rebase's the right commits"
+cleanup
+init_fork
+forkm_R_quiet update --rebase fork
+debug_git_C_log
+test "$(git_C_log_subject_only init..)" \
+    = 'm3 m2 m1 f1'
+
+echo "Testing 'forkm bump'..."
+
+echo "...checking if each rebased branch is based on the given upstream..."
+
+echo "......with branches without version suffixes"
+cleanup
+init_fork
+for i in a b c; do
+    git_C_quiet switch --create b"$i" main^
+    forkm_R_quiet track b"$i"
+    git_C_quiet commit --allow-empty -m b"$i"1
+done
+forkm_R_quiet bump
+debug_git_C_log
+for i in a b c; do
+    test "$(git_C rev-parse b"$i"-v2^)" = "$(git_C rev-parse main)"
+done
+
+echo "......with version suffixes and --no-increment"
+cleanup
+init_fork
+for i in a b c; do
+    git_C_quiet switch --create b"$i"-v1 main^
+    forkm_R_quiet track b"$i"-v1
+    git_C_quiet commit --allow-empty -m b"$i"1
+done
+forkm_R_quiet bump -n
+debug_git_C_log
+for i in a b c; do
+    test "$(git_C rev-parse b"$i"-v1^)" = "$(git_C rev-parse main)"
+done
+
+echo "......with arbitrary commit as upstream, and non-empty commits"
+cleanup
+init_fork
+for i in a b c; do
+    git_C_quiet switch --create b"$i" main~2
+    forkm_R_quiet track b"$i"
+    touch "${testdir}"/"$i"
+    git_C_quiet add "$i"
+    git_C_quiet commit -m b"$i"1
+done
+forkm_R_quiet bump main~
+debug_git_C_log
+for i in a b c; do
+    test "$(git_C rev-parse b"$i"-v2^)" = "$(git_C rev-parse main~)"
+done
+
+echo "Testing 'forkm patch'..."
+
+echo "...successfully cherry-picks into new branches (--only-pick)"
+cleanup
+init_fork
+for i in a b c; do
+    git_C_quiet switch --create b"$i" main
+    forkm_R_quiet track b"$i"
+    touch "${testdir}"/"$i"
+    git_C_quiet add "$i"
+    git_C_quiet commit -m b"$i"1
+done
+forkm_R_quiet patch -p fork
+debug_git_C_log
+for i in a b c; do
+    test "$(git_C_log_subject_only fork_b"$i"^..fork_b"$i")" = b"$i"1
+done
+
+echo "...successfully merges those new branches (--only-merge)"
+forkm_R_quiet patch -m fork
+debug_git_C_log
+# Each branch adds a file corresponding to its name, so if the branches were
+# merged correctly, all 3 files will be present.
+for i in a b c; do
+    test -e "${testdir}"/"$i"
+done
+
+echo "...does both of the above in one go"
+init_patched() {
+    init_fork
+    for i in a b c; do
+        git_C_quiet switch --create b"$i" main
+        forkm_R_quiet track b"$i"
+        touch "${testdir}"/"$i"
+        git_C_quiet add "$i"
+        git_C_quiet commit -m b"$i"1
+    done
+    forkm_R_quiet patch fork
+    debug_git_C_log
+}
+cleanup
+init_patched
+for i in a b c; do
+    test -e "${testdir}"/"$i"
+done
+
+echo "Testing 'forkm unpatch'..."
+
+echo "...undoes 'forkm patch'"
+cleanup
+init_patched
+forkm_R_quiet unpatch fork
+debug_git_C_log
+for i in a b c; do
+    test -e "${testdir}"/"$i" && exit 1
+done
+
+echo "...can work with untracked fork_ branches (--lax)"
+cleanup
+init_patched
+for b in ba bb bc; do
+    forkm_R_quiet untrack "$b"
+done
+forkm_R_quiet unpatch --lax fork
+for i in a b c; do
+    test -e "${testdir}"/"$i" && exit 1
+done
+
+echo "All tests successful!"
+exit 0

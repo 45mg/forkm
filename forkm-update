@@ -1,0 +1,90 @@
+#!/bin/sh
+# TODO license etc
+
+set -eu
+
+show_help() {
+    cat <<EOF
+usage: forkm update <fork_branch> [<upstream_branch>]
+
+Apply new commits from <upstream_branch> to <fork_branch>.
+
+Defaults to merging <upstream_branch> into <fork_branch>, but can also rebase
+commits (see options).
+
+Uses the '-X ours' merge strategy option to favor <fork_branch> in all
+conflicts.
+(TODO learn more about merge strategy to figure out if we should give more
+control)
+
+<upstream_branch> defaults to 'main' or 'master', in that order; you can specify
+any ref or commit.
+
+Options:
+-r, --rebase   intead of merging, rebase commits onto <fork_branch>
+-h, --help     show this message and exit
+-V, --version  show version information and exit
+EOF
+}
+
+if [ $# -eq 0 ]; then
+    show_help
+    exit 1
+fi
+
+rebase=0
+# Parse flags
+while [ $# -gt 0 ]; do
+    case $1 in
+        -h | --help)
+            show_help
+            exit 0
+            ;;
+        -V | --version)
+            printf "forkm: version %s\n" "${FORKM_VERSION}"
+            exit 0
+            ;;
+        -r | --rebase)
+            rebase=1
+            shift
+            ;;
+        -*) # Invalid options.
+            printf >&2 "forkm-update: Invalid flag '%s'\n" "$1"
+            show_help
+            exit 1
+            ;;
+        *)
+            # Ignore anything else
+            break
+            ;;
+    esac
+done
+
+if [ $# -eq 0 ] || [ $# -gt 2 ]; then
+    show_help
+    exit 1
+fi
+fork="$1"
+shift
+upstream=""
+if [ $# -eq 1 ]; then
+    upstream="$1"
+else
+    read -r upstream <<EOF
+	$("${FORKM_PATH}"/forkm--upstream-branch-name)
+EOF
+fi
+
+if [ $rebase -ne 0 ]; then
+    # XXX: '-X ours' means that fork changes will always win over upstream
+    # changes.
+    git rebase --rebase-merges -X ours --empty=keep -- \
+        "${fork}" "$(git rev-parse "${upstream}")"
+    git branch --force -- "${fork}"
+    # TODO allow disabling tagging; should it be done for merges?
+    git tag forkm_update_"$(TZ=UTC date '+%Y%m%d_%H%M%S_utc')" "${fork}"
+    git switch --quiet -- "${fork}"
+else
+    git switch --quiet -- "${fork}"
+    git merge --no-edit -X ours -- "${upstream}"
+fi

@@ -1,0 +1,91 @@
+#!/bin/sh
+# TODO license etc
+
+set -eu
+
+show_help() {
+    cat <<EOF
+usage: forkm bump [<upstream_branch>]
+
+Rebase all tracked patch branches onto <upstream_branch>.
+
+For every tracked patch branch <branch>, this will create a new branch starting
+from <branch> with the same name - except for an incremented version suffix.
+<branch> will be untracked, and the new branch will be tracked to replace it.
+(This step can be skipped with the '-n' flag.)
+
+Then, all tracked patch branches will be rebased onto <upstream_branch>.
+
+<upstream_branch> defaults to 'main' or 'master', in that order; you can specify
+any ref or commit.
+
+Options:
+-n, --no-increment don't increment the branch version suffix
+-h, --help         show this message and exit
+-V, --version      show version information and exit
+EOF
+}
+
+increment=1
+merge=1
+# Parse flags
+while [ $# -ne 0 ]; do
+    case $1 in
+        -h | --help)
+            show_help
+            exit 0
+            ;;
+        -V | --version)
+            printf "forkm: version %s\n" "${FORKM_VERSION}"
+            exit 0
+            ;;
+        -n | --no-increment)
+            increment=0
+            shift
+            ;;
+        -*) # Invalid options.
+            printf >&2 "forkm-patch: Invalid flag '%s'\n" "$1"
+            show_help
+            exit 1
+            ;;
+        *)
+            # Not a flag
+            break
+            ;;
+    esac
+done
+
+upstream=""
+if [ $# -eq 1 ]; then
+    upstream="$1"
+elif [ $# -eq 0 ]; then
+    read -r upstream <<EOF
+	$("${FORKM_PATH}"/forkm--upstream-branch-name)
+EOF
+else
+    show_help
+    exit 1
+fi
+
+patch_branch_list="$("${FORKM_PATH}"/forkm-list --oneline)"
+
+for branch in ${patch_branch_list}; do
+    new_branch="${branch}"
+    read -r name version <<-EOF
+		$("${FORKM_PATH}"/forkm--split-branch-name "${branch}")
+		EOF
+    version="${version:-1}"
+    [ ${increment} -ne 0 ] && version=$((version+1))
+    new_branch="${name}"-v"${version}"
+    if [ "${new_branch}" != "${branch}" ]; then
+        # TODO implement 'forkm mv'
+        "${FORKM_PATH}"/forkm-untrack "${branch}"
+        git branch -- "${new_branch}" "${branch}"
+        "${FORKM_PATH}"/forkm-track "${new_branch}"
+    fi
+    if [ "$(git merge-base -- "${new_branch}" "${upstream}")" \
+        != "$(git rev-parse "${upstream}")" ]; then
+        printf "forkm: Rebasing %s onto '%s'...\n" "${new_branch}" "${upstream}"
+        git rebase --onto "${upstream}" "${upstream}" "${new_branch}"
+    fi
+done
