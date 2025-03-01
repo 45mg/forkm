@@ -25,6 +25,10 @@ cleanup() {
 testdir="$(mktemp -d)"
 remotedir="$(mktemp -d)"
 trap cleanup EXIT
+if [ ${debug} -ne 0 ]; then
+    echo "testdir: ${testdir}"
+    echo "remotedir: ${remotedir}"
+fi
 
 git_C() {
     git -C "${testdir}" "$@"
@@ -59,10 +63,10 @@ debug_git_C_log() {
 
 init_repo() {
     mkdir -p "${testdir}"
-    git_C_quiet init --quiet --initial-branch=main
+    git_C_quiet init --initial-branch=main
     git_C_quiet config user.name forkm_test
     git_C_quiet config user.email forkm_test@no.mail
-    git_C_quiet commit --quiet --allow-empty -m 'Initial commit'
+    git_C_quiet commit --allow-empty -m 'Initial commit'
     git_C_quiet tag init
 }
 init_remote() {
