@@ -2,7 +2,7 @@ PREFIX ?= /usr/local
 
 .PHONY: check install clean
 
-all: check install
+build: doc
 
 check:
 	./tests
@@ -13,7 +13,7 @@ install:
 		install -m 0755 "$$f" $(PREFIX)/bin/"$$f"; \
 	done
 
-# TODO doc (man pages)
+doc: # TODO (man pages)
 
 clean:
 	rm -f $(PREFIX)/bin/forkm*
