@@ -71,9 +71,7 @@ upstream=""
 if [ $# -eq 1 ]; then
     upstream="$1"
 elif [ $# -eq 0 ]; then
-    read -r upstream <<EOF
-	$("${FORKM_PATH}"/forkm--upstream-branch-name)
-EOF
+    upstream="$(util_guess_upstream_branch)"
 else
     show_help
     exit 1
@@ -97,8 +95,8 @@ fi
 for branch in ${patch_branch_list}; do
     new_branch="${branch}"
     read -r name version <<-EOF
-		$("${FORKM_PATH}"/forkm--split-branch-name "${branch}")
-		EOF
+	$(util_split_branch_name "${branch}")
+	EOF
     version="${version:-1}"
     [ ${increment} -ne 0 ] && version=$((version+1))
     new_branch="${name}"-v"${version}"

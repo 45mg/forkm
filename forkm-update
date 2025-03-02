@@ -83,9 +83,7 @@ upstream=""
 if [ $# -eq 1 ]; then
     upstream="$1"
 else
-    read -r upstream <<EOF
-	$("${FORKM_PATH}"/forkm--upstream-branch-name)
-EOF
+    upstream="$(util_guess_upstream_branch)"
 fi
 
 git=git

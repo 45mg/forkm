@@ -18,3 +18,30 @@ util_warn() {
 util_error() {
     printf >&2 "${FORKM_COMMAND}: error: %s\n" "$*"
 }
+
+util_guess_upstream_branch() {
+    if [ -n "$(git branch --list main)" ]; then
+        printf '%s' main
+    elif [ -n "$(git branch --list master)" ]; then
+        printf '%s' master
+    else
+        util_error "unable to determine upstream branch name"
+        exit 1
+    fi
+}
+
+# Attempt to split the version number suffix from a branch name.
+# eg. split 'foo-bar-v3' into 'foo-bar' and '-v3'.
+# If we succeed, output the branch name and version number separated by a space.
+# Otherwise, output the original input.
+util_split_branch_name() {
+    name=$(echo "$1" | sed -E 's/-v[0-9]+$//')
+    version_suffix=
+    if [ "${name}" != "$1" ]; then
+        version_suffix="${1##"$name"}"
+        version_number="${version_suffix##-v}"
+        printf '%s %s' "${name}" "${version_number}"
+    else
+        printf '%s' "$1"
+    fi
+}

@@ -58,7 +58,7 @@ for branch in ${branch_list}; do
         continue
     fi
     read -r name version <<-EOF
-	$("${FORKM_PATH}"/forkm--split-branch-name "${branch}")
+	$(util_split_branch_name "${branch}")
 	EOF
     if [ -z "${version}" ]; then
         util_warn \

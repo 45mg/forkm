@@ -196,7 +196,7 @@ debug_git_C_log
 test "$(git_C rev-parse HEAD^)" = "$(git_C rev-parse fork_init)"
 test "$(git_C rev-parse HEAD^2)" = "$(git_C rev-parse main)"
 
-# The next 2 cases depend on forkm--upstream-branch-name, which is used in the
+# The next 2 cases depend on util_guess_upstream_branch, which is used in the
 # remaining commands as well; so we don't directly test upstream branch
 # detection for the other commands
 echo "......detecting the 'main' branch as upstream"
