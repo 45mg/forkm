@@ -24,6 +24,7 @@ Options:
 -n, --no-increment don't increment the branch version suffix
 -d, --dry-run      print, without executing, the commands that would be run
 -q, --quiet        no warnings or info messages
+-v, --verbose      run with 'set -x'
 -h, --help         show this message and exit
 -V, --version      show version information and exit
 EOF
@@ -53,6 +54,10 @@ while [ $# -ne 0 ]; do
             ;;
         -q | --quiet)
             quiet=1
+            shift
+            ;;
+        -v | --verbose)
+            set -x
             shift
             ;;
         -*) # Invalid options.

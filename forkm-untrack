@@ -12,6 +12,7 @@ Untrack one or more tracked patch branches.
 
 Options:
 -c, --cleanup  remove all dangling trackers
+-v, --verbose  run with 'set -x'
 -h, --help     show this message and exit
 -V, --version  show version information and exit
 EOF
@@ -51,6 +52,10 @@ while [ $# -gt 0 ]; do
         -c | --cleanup)
             cleanup
             exit 0
+            ;;
+        -v | --verbose)
+            set -x
+            shift
             ;;
         -*) # Invalid options.
             util_error "Invalid flag '$1'"

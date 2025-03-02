@@ -29,6 +29,7 @@ update         get new commits from an upstream branch
 
 OPTOINS may be:
 -R DIRECTORY   use repository in DIRECTORY
+-v, --verbose  run with 'set -x'
 -h, --help     show this message and exit
 -V, --version  show version information and exit
 EOF
@@ -55,6 +56,10 @@ while [ $# -gt 0 ]; do
             GIT_COMMON_DIR="$(git -C "$1" rev-parse --path-format=absolute --git-common-dir)"
             GIT_WORK_TREE="$(git -C "$1" rev-parse --show-toplevel)" # absolute by default
             export GIT_DIR GIT_COMMON_DIR GIT_WORK_TREE
+            shift
+            ;;
+        -v | --verbose)
+            set -x
             shift
             ;;
         -V | --version)

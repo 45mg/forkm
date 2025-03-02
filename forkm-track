@@ -11,7 +11,8 @@ usage: forkm track <branch>...
 Track one or more branches as patch branches.
 
 Options:
--q, --quiet        no warnings or info messages
+-q, --quiet    no warnings or info messages
+-v, --verbose  run with 'set -x'
 -h, --help     show this message and exit
 -V, --version  show version information and exit
 EOF
@@ -38,6 +39,10 @@ while [ $# -gt 0 ]; do
         -V | --version)
             printf "forkm: version %s\n" "${FORKM_VERSION}"
             exit 0
+            ;;
+        -v | --verbose)
+            set -x
+            shift
             ;;
         -*) # Invalid options.
             util_error "Invalid flag '$1'"
