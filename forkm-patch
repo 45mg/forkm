@@ -68,7 +68,7 @@ while [ $# -ne 0 ]; do
             shift
             ;;
         -*) # Invalid options.
-            printf >&2 "forkm-patch: Invalid flag '%s'\n" "$1"
+            util_error "Invalid flag '$1'"
             show_help
             exit 1
             ;;

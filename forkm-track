@@ -2,6 +2,7 @@
 # TODO license etc
 
 set -eu
+. "${FORKM_PATH}"/forkm--util
 
 show_help() {
     cat <<EOF
@@ -10,6 +11,7 @@ usage: forkm track <branch>...
 Track one or more branches as patch branches.
 
 Options:
+-q, --quiet        no warnings or info messages
 -h, --help     show this message and exit
 -V, --version  show version information and exit
 EOF
@@ -21,9 +23,14 @@ if [ $# -eq 0 ]; then
 fi
 
 branch_list=""
+quiet=0
 # Parse arguments
 while [ $# -gt 0 ]; do
     case $1 in
+        -q | --quiet)
+            quiet=1
+            shift
+            ;;
         -h | --help)
             show_help
             exit 0
@@ -33,7 +40,7 @@ while [ $# -gt 0 ]; do
             exit 0
             ;;
         -*) # Invalid options.
-            printf >&2 "forkm-track: Invalid flag '%s'\n" "$1"
+            util_error "Invalid flag '$1'"
             show_help
             exit 1
             ;;
@@ -47,17 +54,15 @@ done
 
 for branch in ${branch_list}; do
     if [ -z "$(git branch --list -- "${branch}")" ]; then
-        printf >&2 "forkm: warning: branch '%s' does not exist; ignoring\n" \
-            "${branch}"
+        util_warn "branch '${branch}' does not exist; ignoring"
         continue
     fi
     read -r name version <<-EOF
 	$("${FORKM_PATH}"/forkm--split-branch-name "${branch}")
 	EOF
     if [ -z "${version}" ]; then
-        printf >&2 \
-            "forkm: warning: branch name '%s' lacks version suffix; '-v1' will be implied\n" \
-            "${branch}"
+        util_warn \
+            "branch name '${branch}' lacks version suffix; '-v1' will be implied"
     fi
     git symbolic-ref -- refs/forkm/"${name}" refs/heads/"${branch}"
 done

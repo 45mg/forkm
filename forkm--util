@@ -12,7 +12,7 @@ util_info() {
 }
 util_warn() {
     if [ -z ${quiet+x} ] || [ "${quiet}" -eq 0 ]; then
-        printf "${FORKM_COMMAND}: warning: %s\n" "$*"
+        printf >&2 "${FORKM_COMMAND}: warning: %s\n" "$*"
     fi
 }
 util_error() {

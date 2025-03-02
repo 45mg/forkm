@@ -2,6 +2,7 @@
 # TODO license etc
 
 set -eu
+. "${FORKM_PATH}"/forkm--util
 
 show_help() {
     cat <<EOF
@@ -40,7 +41,7 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         -*) # Invalid options.
-            printf >&2 "forkm-list: Invalid flag '%s'\n" "$1"
+            util_error "Invalid flag '$1'"
             show_help
             exit 1
             ;;
@@ -67,8 +68,8 @@ for refpath in "${GIT_DIR}"/refs/forkm/*; do
     branch="$(git symbolic-ref --short -- "$ref")"
     if [ -z "$(git branch --list -- "${branch}")" ]; then
         if [ $quiet -eq 0 ]; then
-            printf >&2 "forkm-list: warning: dangling tracker %s\n" "${ref}"
-            printf >&2 "forkm-list: hint: did you delete the corresponding tracked branch?\n"
+            util_warn "dangling tracker ${ref};"
+            util_warn "did you delete the corresponding tracked branch?"
         fi
     else
         printf "${format}" "${branch}"

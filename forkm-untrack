@@ -2,6 +2,7 @@
 # TODO license etc
 
 set -eu
+. "${FORKM_PATH}"/forkm--util
 
 show_help() {
     cat <<EOF
@@ -48,7 +49,7 @@ while [ $# -gt 0 ]; do
             exit 0
             ;;
         -*) # Invalid options.
-            printf >&2 "forkm-untrack: Invalid flag '%s'\n" "$1"
+            util_error "Invalid flag '$1'"
             show_help
             exit 1
             ;;
@@ -75,18 +76,15 @@ for branch in ${branch_list}; do
     fi
 
     if [ $nonexistent -eq 1 ] && [ $untracked -eq 1 ]; then
-        printf >&2 "forkm-untrack: warning: branch '%s' nonexistent and untracked; skipping\n" \
-            "${branch}"
+        util_warn "branch '${branch}' nonexistent and untracked; skipping"
         continue
     elif [ $nonexistent -eq 0 ] && [ $untracked -eq 1 ]; then
-        printf >&2 "forkm-untrack: warning: branch '%s' untracked; skipping\n" \
-            "${branch}"
+        util_warn "branch '${branch}' untracked; skipping"
         continue
     fi
 
     if [ $nonexistent -eq 1 ] && [ $untracked -eq 0 ]; then
-        printf >&2 "forkm-untrack: removing dangling tracker for nonexistent branch '%s'\n" \
-            "${branch}"
+        util_warn "removing dangling tracker for nonexistent branch '${branch}'"
     fi
     git symbolic-ref -d -- refs/forkm/"${name}"
 done
