@@ -2,6 +2,7 @@
 # TODO license etc
 
 set -eu
+. "${FORKM_PATH}"/forkm--util
 
 show_help() {
     cat <<EOF
@@ -21,6 +22,8 @@ Options:
 -l, --lax      unmerge any branch whose name starts with '<fork_branch>_'
                (without checking if the rest of its name corresponds to a
                tracked patch branch)
+-d, --dry-run      print, without executing, the commands that would be run
+-q, --quiet        no warnings or info messages
 -h, --help     show this message and exit
 -V, --version  show version information and exit
 EOF
@@ -32,6 +35,8 @@ if [ $# -eq 0 ]; then
 fi
 
 lax=0
+dry_run=0
+quiet=0
 # Parse flags
 while [ $# -ne 0 ]; do
     case $1 in
@@ -45,6 +50,14 @@ while [ $# -ne 0 ]; do
             ;;
         -l | --lax)
             lax=1
+            shift
+            ;;
+        -d | --dry-run)
+            dry_run=1
+            shift
+            ;;
+        -q | --quiet)
+            quiet=1
             shift
             ;;
         -*) # Invalid options.
@@ -95,6 +108,11 @@ if [ ${lax} -eq 0 ]; then
     patch_branch_list="$("${FORKM_PATH}"/forkm-list --oneline)"
 fi
 
+git=git
+if [ ${dry_run} -ne 0 ]; then
+    git="echo git"
+fi
+
 for merge in ${merge_commits}; do
     second_parent="$(git rev-parse "${merge}"^2)"
     branches="$(git branch --points-at="${second_parent}" --format='%(refname:short)')"
@@ -120,10 +138,10 @@ for merge in ${merge_commits}; do
         fi
     done
     if [ ${do_unmerge} -eq 1 ]; then
-        git checkout --quiet "${fork}"
+        ${git} checkout --quiet "${fork}"
         # --mainline 1 to always revert relative to the first parent (since
         # --patch branches are only every merged $into fork, not the other way
         # --round)
-        git revert --no-edit --mainline 1 -- "${merge}"
+        ${git} revert --no-edit --mainline 1 -- "${merge}"
     fi
 done

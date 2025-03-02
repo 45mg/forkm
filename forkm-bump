@@ -2,6 +2,7 @@
 # TODO license etc
 
 set -eu
+. "${FORKM_PATH}"/forkm--util
 
 show_help() {
     cat <<EOF
@@ -21,13 +22,16 @@ any ref or commit.
 
 Options:
 -n, --no-increment don't increment the branch version suffix
+-d, --dry-run      print, without executing, the commands that would be run
+-q, --quiet        no warnings or info messages
 -h, --help         show this message and exit
 -V, --version      show version information and exit
 EOF
 }
 
 increment=1
-merge=1
+dry_run=0
+quiet=0
 # Parse flags
 while [ $# -ne 0 ]; do
     case $1 in
@@ -41,6 +45,14 @@ while [ $# -ne 0 ]; do
             ;;
         -n | --no-increment)
             increment=0
+            shift
+            ;;
+        -d | --dry-run)
+            dry_run=1
+            shift
+            ;;
+        -q | --quiet)
+            quiet=1
             shift
             ;;
         -*) # Invalid options.
@@ -69,6 +81,19 @@ fi
 
 patch_branch_list="$("${FORKM_PATH}"/forkm-list --oneline)"
 
+git=git
+if [ ${dry_run} -ne 0 ]; then
+    git="echo git"
+fi
+forkm_untrack="${FORKM_PATH}"/forkm-untrack
+if [ ${dry_run} -ne 0 ]; then
+    forkm_untrack="echo forkm untrack"
+fi
+forkm_track="${FORKM_PATH}"/forkm-track
+if [ ${dry_run} -ne 0 ]; then
+    forkm_track="echo forkm track"
+fi
+
 for branch in ${patch_branch_list}; do
     new_branch="${branch}"
     read -r name version <<-EOF
@@ -79,13 +104,13 @@ for branch in ${patch_branch_list}; do
     new_branch="${name}"-v"${version}"
     if [ "${new_branch}" != "${branch}" ]; then
         # TODO implement 'forkm mv'
-        "${FORKM_PATH}"/forkm-untrack "${branch}"
-        git branch -- "${new_branch}" "${branch}"
-        "${FORKM_PATH}"/forkm-track "${new_branch}"
+        ${forkm_untrack} "${branch}"
+        ${git} branch -- "${new_branch}" "${branch}"
+        ${forkm_track} "${new_branch}"
     fi
     if [ "$(git merge-base -- "${new_branch}" "${upstream}")" \
         != "$(git rev-parse "${upstream}")" ]; then
-        printf "forkm: Rebasing %s onto '%s'...\n" "${new_branch}" "${upstream}"
-        git rebase --onto "${upstream}" "${upstream}" "${new_branch}"
+        util_info "Rebasing ${new_branch} onto '${upstream}'..."
+        ${git} rebase --onto "${upstream}" "${upstream}" "${new_branch}"
     fi
 done

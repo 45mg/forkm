@@ -10,7 +10,7 @@ usage: forkm list
 List all tracked patch branches.
 
 Options:
--q, --quiet    no annotations
+-q, --quiet    no warnings or info messages
 -o, --oneline  --quiet, and space-separated output
 -h, --help     show this message and exit
 -V, --version  show version information and exit

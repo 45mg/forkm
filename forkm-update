@@ -22,6 +22,8 @@ any ref or commit.
 
 Options:
 -r, --rebase   intead of merging, rebase commits onto <fork_branch>
+-d, --dry-run  print, without executing, the commands that would be run
+-q, --quiet        no warnings or info messages
 -h, --help     show this message and exit
 -V, --version  show version information and exit
 EOF
@@ -33,6 +35,8 @@ if [ $# -eq 0 ]; then
 fi
 
 rebase=0
+dry_run=0
+quiet=0
 # Parse flags
 while [ $# -gt 0 ]; do
     case $1 in
@@ -46,6 +50,14 @@ while [ $# -gt 0 ]; do
             ;;
         -r | --rebase)
             rebase=1
+            shift
+            ;;
+        -d | --dry-run)
+            dry_run=1
+            shift
+            ;;
+        -q | --quiet)
+            quiet=1
             shift
             ;;
         -*) # Invalid options.
@@ -75,16 +87,20 @@ else
 EOF
 fi
 
+git=git
+if [ ${dry_run} -ne 0 ]; then
+    git="echo git"
+fi
 if [ $rebase -ne 0 ]; then
     # XXX: '-X ours' means that fork changes will always win over upstream
     # changes.
-    git rebase --rebase-merges -X ours --empty=keep -- \
+    ${git} rebase --rebase-merges -X ours --empty=keep -- \
         "${fork}" "$(git rev-parse "${upstream}")"
-    git branch --force -- "${fork}"
+    ${git} branch --force -- "${fork}"
     # TODO allow disabling tagging; should it be done for merges?
-    git tag forkm_update_"$(TZ=UTC date '+%Y%m%d_%H%M%S_utc')" "${fork}"
-    git switch --quiet -- "${fork}"
+    ${git} tag forkm_update_"$(TZ=UTC date '+%Y%m%d_%H%M%S_utc')" "${fork}"
+    ${git} switch --quiet -- "${fork}"
 else
-    git switch --quiet -- "${fork}"
-    git merge --no-edit -X ours -- "${upstream}"
+    ${git} switch --quiet -- "${fork}"
+    ${git} merge --no-edit -X ours -- "${upstream}"
 fi

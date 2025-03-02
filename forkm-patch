@@ -2,6 +2,7 @@
 # TODO license etc
 
 set -eu
+. "${FORKM_PATH}"/forkm--util
 
 show_help() {
     cat <<EOF
@@ -23,6 +24,8 @@ specify any ref or commit.
 Options:
 -p, --only-pick    cherry-pick into new branches, but don't merge them in
 -m, --only-merge   just merge in previously created new branches
+-d, --dry-run      print, without executing, the commands that would be run
+-q, --quiet        no warnings or info messages
 -h, --help         show this message and exit
 -V, --version      show version information and exit
 EOF
@@ -35,6 +38,8 @@ fi
 
 only_pick=0
 only_merge=0
+dry_run=0
+quiet=0
 # Parse flags
 while [ $# -ne 0 ]; do
     case $1 in
@@ -52,6 +57,14 @@ while [ $# -ne 0 ]; do
             ;;
         -m | --only-merge)
             only_merge=1
+            shift
+            ;;
+        -d | --dry-run)
+            dry_run=1
+            shift
+            ;;
+        -q | --quiet)
+            quiet=1
             shift
             ;;
         -*) # Invalid options.
@@ -84,6 +97,11 @@ fi
 patch_branch_list="$("${FORKM_PATH}"/forkm-list --oneline)"
 new_branch_list=""
 
+git=git
+if [ ${dry_run} -ne 0 ]; then
+    git="echo git"
+fi
+
 for branch in ${patch_branch_list}; do
     new_branch="${fork}"_"${branch}"
     new_branch_list="${new_branch_list} ${new_branch}"
@@ -91,18 +109,17 @@ for branch in ${patch_branch_list}; do
         if [ -z "$(git branch --list -- "${new_branch}")" ] ||
                [ "$(git merge-base -- "${fork}" "${new_branch}")" \
                    != "$(git rev-parse -- "${fork}")" ]; then
-            printf "forkm: Cherry-picking %s onto '%s' as %s...\n" \
-                "${branch}" "${fork}" "${new_branch}"
-            git branch -f -- "${new_branch}" "${fork}"
-            git switch --quiet "${new_branch}"
-            git cherry-pick -- "${upstream}".."${branch}"
+            util_info "Cherry-picking ${branch} onto '${fork}' as ${new_branch}..."
+            ${git} branch -f -- "${new_branch}" "${fork}"
+            ${git} switch --quiet "${new_branch}"
+            ${git} cherry-pick -- "${upstream}".."${branch}"
         fi
     fi
 done
 
 if [ ${only_pick} -eq 0 ]; then
     for branch in ${new_branch_list}; do
-        git switch --quiet -- "${fork}"
-        git merge --no-ff --no-edit -- "$branch"
+        ${git} switch --quiet -- "${fork}"
+        ${git} merge --no-ff --no-edit -- "$branch"
     done
 fi

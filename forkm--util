@@ -1,0 +1,20 @@
+#!/bin/sh
+# TODO license etc
+
+# This file is meant to be sourced inside other files.
+
+FORKM_COMMAND="$(basename "$0")"
+
+util_info() {
+    if [ -z ${quiet+x} ] || [ "${quiet}" -eq 0 ]; then
+        printf "${FORKM_COMMAND}: %s\n" "$*"
+    fi
+}
+util_warn() {
+    if [ -z ${quiet+x} ] || [ "${quiet}" -eq 0 ]; then
+        printf "${FORKM_COMMAND}: warning: %s\n" "$*"
+    fi
+}
+util_error() {
+    printf >&2 "${FORKM_COMMAND}: error: %s\n" "$*"
+}
