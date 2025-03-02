@@ -327,6 +327,27 @@ for i in a b c; do
     test -e "${testdir}"/"$i"
 done
 
+echo "...allows specifying commit to pick onto (--base)"
+cleanup
+init_fork # leaves us on branch 'fork'
+git_C_quiet commit --allow-empty -m f2
+base="$(git_C rev-parse HEAD)"
+git_C_quiet switch --create b main
+forkm_R_quiet track b
+touch "${testdir}"/b1
+git_C_quiet add b1
+git_C_quiet commit -m b1
+forkm_R_quiet patch --base "${base}" fork
+debug_git_C_log
+test "$(git_C rev-parse fork_b^)" = "${base}"
+
+echo "...does nothing if the fork branch is already fully patched"
+fork_tip="$(git_C rev-parse fork)"
+forkm_R_quiet patch --base "${base}" fork
+debug_git_C_log
+git_C_quiet switch fork
+test "$(git_C rev-parse fork)" = "${fork_tip}"
+
 echo "Testing 'forkm unpatch'..."
 
 echo "...undoes 'forkm patch'"

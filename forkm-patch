@@ -10,9 +10,9 @@ usage: forkm patch <fork_branch> [<upstream_branch>]
 
 Cherry-pick and merge all tracked patch branches into <fork_branch>.
 
-For every tracked patch branch <branch>, this will cherry pick its commits onto
-<fork_branch> is on, then create a branch named '<fork_branch>_<branch>' on the
-resulting HEAD.
+For every tracked patch branch <branch>, this will cherry-pick its commits onto
+the commit that <fork_branch> is pointing to, then create a branch named
+'<fork_branch>_<branch>' on the resulting HEAD.
 
 Then, all the new branches will be merged into <fork_branch>, unless '-P' is
 given.
@@ -24,6 +24,7 @@ specify any ref or commit.
 Options:
 -p, --only-pick    cherry-pick into new branches, but don't merge them in
 -m, --only-merge   just merge in previously created new branches
+--base BASE        cherry-pick onto BASE instead of <fork_branch>'s commit
 -d, --dry-run      print, without executing, the commands that would be run
 -q, --quiet        no warnings or info messages
 -h, --help         show this message and exit
@@ -57,6 +58,15 @@ while [ $# -ne 0 ]; do
             ;;
         -m | --only-merge)
             only_merge=1
+            shift
+            ;;
+        --base)
+            if [ $# -lt 2 ]; then
+                util_error "'--base' requires an argument"
+                exit 1
+            fi
+            shift
+            base="$1"
             shift
             ;;
         -d | --dry-run)
@@ -103,10 +113,10 @@ for branch in ${patch_branch_list}; do
     new_branch="${fork}"_"${branch}"
     if [ ${only_merge} -eq 0 ]; then
         if [ -z "$(git branch --list -- "${new_branch}")" ] ||
-               [ "$(git merge-base -- "${fork}" "${new_branch}")" \
-                   != "$(git rev-parse -- "${fork}")" ]; then
-            util_info "Cherry-picking ${branch} onto '${fork}' as ${new_branch}..."
-            ${git} branch -f -- "${new_branch}" "${fork}"
+               [ "$(git merge-base -- "${base:-fork}" "${new_branch}")" \
+                   != "$(git rev-parse "${base:-fork}")" ]; then
+            util_info "Cherry-picking ${branch} onto '${base:-fork}' as ${new_branch}..."
+            ${git} branch -f -- "${new_branch}" "${base:-fork}"
             ${git} switch --quiet "${new_branch}"
             ${git} cherry-pick -- "${upstream}".."${branch}"
         fi
@@ -117,6 +127,7 @@ if [ ${only_pick} -eq 0 ]; then
     for branch in ${patch_branch_list}; do
         new_branch="${fork}"_"${branch}"
         if [ -n "$(git branch --list -- "${new_branch}")" ]; then
+            util_info "Merging ${new_branch} into ${fork}..."
             ${git} switch --quiet -- "${fork}"
             # --no-ff: always create a merge commit, so that 'forkm unpatch' can
             # revert the merge easily
