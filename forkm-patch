@@ -93,7 +93,6 @@ else
 fi
 
 patch_branch_list="$("${FORKM_PATH}"/forkm-list --oneline)"
-new_branch_list=""
 
 git=git
 if [ ${dry_run} -ne 0 ]; then
@@ -102,7 +101,6 @@ fi
 
 for branch in ${patch_branch_list}; do
     new_branch="${fork}"_"${branch}"
-    new_branch_list="${new_branch_list} ${new_branch}"
     if [ ${only_merge} -eq 0 ]; then
         if [ -z "$(git branch --list -- "${new_branch}")" ] ||
                [ "$(git merge-base -- "${fork}" "${new_branch}")" \
@@ -116,8 +114,13 @@ for branch in ${patch_branch_list}; do
 done
 
 if [ ${only_pick} -eq 0 ]; then
-    for branch in ${new_branch_list}; do
-        ${git} switch --quiet -- "${fork}"
-        ${git} merge --no-ff --no-edit -- "$branch"
+    for branch in ${patch_branch_list}; do
+        new_branch="${fork}"_"${branch}"
+        if [ -n "$(git branch --list -- "${new_branch}")" ]; then
+            ${git} switch --quiet -- "${fork}"
+            # --no-ff: always create a merge commit, so that 'forkm unpatch' can
+            # revert the merge easily
+            ${git} merge --no-ff --no-edit -- "${new_branch}"
+        fi
     done
 fi
