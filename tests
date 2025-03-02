@@ -271,6 +271,16 @@ for i in a b c; do
     test "$(git_C rev-parse b"$i"-v2^)" = "$(git_C rev-parse main~)"
 done
 
+echo "...doesn't increase the version suffix for up-to-date branches"
+cleanup
+init_fork
+git_C_quiet switch --create b-v1 main
+forkm_R_quiet track b-v1
+git_C_quiet commit --allow-empty -m b1
+forkm_R_quiet bump
+debug_git_C_log
+test "$(git_C rev-parse --branches='b-v*')" = "$(git_C rev-parse b-v1)"
+
 echo "Testing 'forkm patch'..."
 
 echo "...successfully cherry-picks into new branches (--only-pick)"
