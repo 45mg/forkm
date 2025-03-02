@@ -23,12 +23,12 @@ if [ $# -eq 0 ]; then
 fi
 
 cleanup() {
-    for refpath in "${GIT_DIR}"/refs/forkm/*; do
+    for refpath in "${GIT_COMMON_DIR}"/refs/forkm/*; do
         # exit immediately if the glob doesn't expand (no refs)
-        if [ "$refpath" = "${GIT_DIR}/refs/forkm/*" ]; then
+        if [ "$refpath" = "${GIT_COMMON_DIR}/refs/forkm/*" ]; then
             exit 0
         fi
-        ref="${refpath#"$GIT_DIR"/}"
+        ref="${refpath#"$GIT_COMMON_DIR"/}"
         branch="$(git symbolic-ref --short -- "$ref")"
         if [ -z "$(git branch --list -- "${branch}")" ]; then
             git symbolic-ref -d "${ref}"

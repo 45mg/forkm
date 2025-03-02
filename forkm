@@ -51,9 +51,10 @@ while [ $# -gt 0 ]; do
             # We export GIT_DIR and GIT_WORK_TREE to tell subcommands where to
             # find these things.
             unset GIT_DIR
-            GIT_DIR="$(git -C "$1" rev-parse --absolute-git-dir)"
-            export GIT_DIR
-            export GIT_WORK_TREE="${GIT_DIR}"/..
+            GIT_DIR="$(git -C "$1" rev-parse --path-format=absolute --git-dir)"
+            GIT_COMMON_DIR="$(git -C "$1" rev-parse --path-format=absolute --git-common-dir)"
+            GIT_WORK_TREE="$(git -C "$1" rev-parse --show-toplevel)" # absolute by default
+            export GIT_DIR GIT_COMMON_DIR GIT_WORK_TREE
             shift
             ;;
         -V | --version)
@@ -82,12 +83,17 @@ fi
 
 # Set the following from the current directory if they're unset.
 if [ -z ${GIT_DIR+x} ]; then
-    GIT_DIR="$(git rev-parse --absolute-git-dir)"
+    GIT_DIR="$(git rev-parse --path-format=absolute --git-dir)"
     export GIT_DIR
+fi
+if [ -z ${GIT_COMMON_DIR+x} ]; then
+    GIT_COMMON_DIR="$(git rev-parse --path-format=absolute --git-common-dir)"
+    export GIT_COMMON_DIR
 fi
 if [ -z ${GIT_WORK_TREE+x} ]; then
     # Not all commands require a worktree, but we set this for the ones that do:
-    export GIT_WORK_TREE="${GIT_DIR}"/..
+    GIT_WORK_TREE="$(git rev-parse --show-toplevel)"
+    export GIT_WORK_TREE
 fi
 
 

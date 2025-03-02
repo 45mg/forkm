@@ -175,6 +175,24 @@ echo "...pushing all refs after deleting a tracked branch"
 git_C_quiet branch -D b3-v12
 git_C_quiet push origin '*:*'
 
+# 'forkm list' and 'forkm untrack' need to loop over every file in the tracker
+# directory. In a linked worktree, detecting the tracker directory is nontrivial
+# (.git is a file, for example). Hence this test.
+echo "Testing 'forkm list' and 'forkm untrack' in a linked worktree..."
+cleanup
+init_repo
+git_C_quiet worktree add ./worktree
+testdir_backup="${testdir}"
+testdir="${testdir}"/worktree
+git_C_quiet branch b
+forkm_R_quiet track b
+test "$(git_C rev-parse --symbolic-full-name refs/forkm/b)" \
+    = refs/heads/b
+forkm_R_quiet untrack b
+git_C_quiet rev-parse --symbolic-full-name refs/forkm/b &&
+    exit 1
+testdir="${testdir_backup}"
+
 init_fork() {
     init_repo
     git_C_quiet branch fork
