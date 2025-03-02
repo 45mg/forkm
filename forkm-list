@@ -63,7 +63,9 @@ fi
 # list the target of every tracker.
 for refpath in "${GIT_DIR}"/refs/forkm/*; do
     # exit immediately if the glob doesn't expand (no refs)
-    [ "$refpath" = "${GIT_DIR}/refs/forkm/*" ] && exit 0
+    if [ "$refpath" = "${GIT_DIR}/refs/forkm/*" ]; then
+        exit 0
+    fi
     ref="${refpath#"$GIT_DIR"/}"
     branch="$(git symbolic-ref --short -- "$ref")"
     if [ -z "$(git branch --list -- "${branch}")" ]; then
