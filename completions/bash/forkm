@@ -1,0 +1,136 @@
+# forkm(1) completion                                       -*- shell-script -*-
+# forkm: fork management tool
+# SPDX-License-Identifier: GPL-3.0-only
+#
+# Copyright (C) 2025 45mg
+#
+# This file is part of forkm.
+#
+# forkm is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 3
+# as published by the Free Software Foundation.
+#
+# forkm is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with forkm. If not, see <http://www.gnu.org/licenses/>.
+
+# Requires bash-completion:
+# https://github.com/scop/bash-completion
+# Needs to be able to load Git's bash completions:
+# https://web.git.kernel.org/pub/scm/git/git.git/tree/contrib/completion/git-completion.bash
+
+__comp_cmd_forkm_track() {
+    __git_complete_refs
+}
+__comp_cmd_forkm_add() {
+    __comp_cmd_forkm_track
+}
+
+__comp_cmd_forkm_list() {
+    return
+}
+__comp_cmd_forkm_ls() {
+    __comp_cmd_forkm_list
+}
+
+__comp_cmd_forkm_untrack() {
+    _comp_compgen_split "$(forkm list --oneline)"
+}
+__comp_cmd_forkm_rm() {
+    __comp_cmd_forkm_untrack
+}
+
+__comp_cmd_forkm_bump() {
+    __git_complete_refs
+}
+
+__comp_cmd_forkm_patch() {
+    case "${prev}" in
+        --base)
+            __git_complete_refs
+            ;;
+        -* | patch) # $cur is the first arg
+            __git_complete_refs --mode=heads
+            ;;
+        *) # $cur is the second arg
+            __git_complete_refs
+            ;;
+    esac
+}
+
+__comp_cmd_forkm_unpatch() {
+    case "${prev}" in
+        -* | unpatch) # $cur is the first arg
+            __git_complete_refs --mode=heads
+            ;;
+        *) # $cur is the second arg
+            __git_complete_refs
+            ;;
+    esac
+}
+
+__comp_cmd_forkm_update() {
+    case "${prev}" in
+        --base)
+            __git_complete_refs
+            ;;
+        -* | update) # $cur is the first arg
+            __git_complete_refs --mode=heads
+            ;;
+        *) # $cur is the second arg
+            __git_complete_refs
+            ;;
+    esac
+}
+
+
+_comp_cmd_forkm() {
+    local cur prev words cword comp_args
+    _comp_initialize -n : -- "$@" || return
+
+    local argopts=" -R "
+    local subcmds=" track add list ls untrack rm bump update patch unpatch "
+
+    # Determine the current subcommand, if any
+    subcmd=""
+    for word in "${words[@]}"; do
+        # if the previous word wasn't an option to an arg...
+        if [[ -z "${prev_word}" ]] || [[ "${argopts}" != *\ "${prev_word}"\ * ]]; then
+            # and the current word is the name of a subcommand...
+            if [[ "${subcmds}" == *\ "${word}"\ * ]]; then
+                subcmd="${word}"
+                break
+            fi
+        fi
+        prev_word="${word}"
+    done
+
+    if [[ "${cur}" == -* ]]; then
+        # option names (from subcommands as well)
+        _comp_compgen_help -c forkm "${subcmd}" --help
+        return
+    elif [[ -n "${subcmd}" ]]; then
+        # subcommand args
+        __comp_cmd_forkm_"${subcmd}"
+        return
+    elif [[ "${argopts}" == *\ "${prev}"\ * ]]; then
+        # 'forkm' option args
+        case "${prev}" in
+            -R) _comp_compgen_filedir
+                return
+                ;;
+        esac
+    else
+        # subcommand names
+        _comp_compgen_split "${subcmds}"
+        return
+    fi
+}
+
+if complete -p git 2>/dev/null || __load_completion git; then
+    complete -F _comp_cmd_forkm forkm
+fi

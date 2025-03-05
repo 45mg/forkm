@@ -18,6 +18,7 @@
 # along with forkm. If not, see <http://www.gnu.org/licenses/>.
 
 PREFIX ?= /usr/local
+BASHCOMPDIR ?= /etc/bash_completion.d
 
 .PHONY: check install clean
 
@@ -29,8 +30,11 @@ check:
 install:
 	mkdir -p $(PREFIX)/bin
 	install -m 0755 forkm* $(PREFIX)/bin/
+	mkdir -p $(BASHCOMPDIR)
+	install -m 644 completions/bash/* $(BASHCOMPDIR)
 
 doc: # TODO (man pages)
 
 clean:
 	rm -f $(PREFIX)/bin/forkm*
+	rm -f $(BASHCOMPDIR)/forkm
