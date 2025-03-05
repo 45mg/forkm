@@ -18,13 +18,49 @@
 # You should have received a copy of the GNU General Public License
 # along with forkm. If not, see <http://www.gnu.org/licenses/>.
 
-# Requires bash-completion:
-# https://github.com/scop/bash-completion
-# Needs to be able to load Git's bash completions:
+# We need to be able to use functions from Git's bash completions:
 # https://web.git.kernel.org/pub/scm/git/git.git/tree/contrib/completion/git-completion.bash
+# The easiest way to get these is to source the above file, as it suggests.
+# We will attempt to load them using the loader functions from the
+# bash-completion package, if available.
+
+# Usage: __comp_cmd_forkm__compgen_help cmd args...
+# Call CMD with ARGS, parse its output like GNU-style --help output, and add it
+# to COMPREPLY.
+# Example: _comp_cmd_forkm__compgen_help forkm patch --help
+# Similar in spirit to _comp_compgen_help from bash-completion.
+__comp_cmd_forkm__compgen_from_help() {
+    # For every line from CMD output, try to extract options from it.
+    local -a opts=()
+    local line
+    while read -r line; do
+        # Does the line list options?
+        if [[ "${line}" =~ ^[[:space:]]*- ]]; then
+            local split word opt
+            IFS=$' \t\n,/|' read -r -a split <<<"${line}"
+            for word in "${split[@]}"; do
+                # Prefer long options over short options from the same line.
+                case "${word}" in
+                    --?*)
+                        opt="${word}"
+                        break
+                        ;;
+                    -?*)
+                        [ -z "${opt}" ] && opt="${word}"
+                        ;;
+                    *) break ;;
+                esac
+            done
+            opts+=("${opt}")
+        fi
+    done <<<"$(LC_ALL=C "$@")"
+    COMPREPLY=( $(compgen -W "${opts[*]}" -- "${cur}") )
+    return
+}
 
 __comp_cmd_forkm_track() {
-    __git_complete_refs
+    __git_complete_refs --mode=heads
+    return
 }
 __comp_cmd_forkm_add() {
     __comp_cmd_forkm_track
@@ -38,7 +74,9 @@ __comp_cmd_forkm_ls() {
 }
 
 __comp_cmd_forkm_untrack() {
-    _comp_compgen_split "$(forkm list --oneline)"
+    trackers="$(forkm list --oneline)"
+    COMPREPLY=( $(compgen -W "${trackers}" -- "${cur}") )
+    return
 }
 __comp_cmd_forkm_rm() {
     __comp_cmd_forkm_untrack
@@ -46,58 +84,64 @@ __comp_cmd_forkm_rm() {
 
 __comp_cmd_forkm_bump() {
     __git_complete_refs
+    return
 }
 
 __comp_cmd_forkm_patch() {
     case "${prev}" in
         --base)
             __git_complete_refs
-            ;;
-        -* | patch) # $cur is the first arg
+            return
+    esac
+    case "${#subcmd_args[@]}" in
+        1)
             __git_complete_refs --mode=heads
+            return
             ;;
-        *) # $cur is the second arg
+        2)
             __git_complete_refs
+            return
+            ;;
+        *)
+            return
             ;;
     esac
 }
 
 __comp_cmd_forkm_unpatch() {
-    case "${prev}" in
-        -* | unpatch) # $cur is the first arg
+    case "${#subcmd_args[@]}" in
+        1)
             __git_complete_refs --mode=heads
+            return
             ;;
-        *) # $cur is the second arg
+        2)
             __git_complete_refs
+            return
+            ;;
+        *)
+            return
             ;;
     esac
 }
 
 __comp_cmd_forkm_update() {
-    case "${prev}" in
-        --base)
-            __git_complete_refs
-            ;;
-        -* | update) # $cur is the first arg
-            __git_complete_refs --mode=heads
-            ;;
-        *) # $cur is the second arg
-            __git_complete_refs
-            ;;
-    esac
+    __comp_cmd_forkm_unpatch # same arguments
 }
 
 
 _comp_cmd_forkm() {
-    local cur prev words cword comp_args
-    _comp_initialize -n : -- "$@" || return
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+    local prev="${COMP_WORDS[COMP_CWORD-1]}"
 
     local argopts=" -R "
     local subcmds=" track add list ls untrack rm bump update patch unpatch "
+    local subcmd
+    local -a subcmd_args=()
 
-    # Determine the current subcommand, if any
-    subcmd=""
-    for word in "${words[@]}"; do
+    # Determine the current subcommand, if any.
+    local i
+    for((i=0;i<"${#COMP_WORDS[@]}";i++)); do
+        local word="${COMP_WORDS[$i]}"
         # if the previous word wasn't an option to an arg...
         if [[ -z "${prev_word}" ]] || [[ "${argopts}" != *\ "${prev_word}"\ * ]]; then
             # and the current word is the name of a subcommand...
@@ -108,10 +152,31 @@ _comp_cmd_forkm() {
         fi
         prev_word="${word}"
     done
+    # Collect the remaining non-option arguments (subcommand args).
+    # (remember, this includes the word currently being typed!)
+    for((i=i+1;i<"${#COMP_WORDS[@]}";i++)); do
+        local word="${COMP_WORDS[$i]}"
+        case "${word}" in
+            --)
+                subcmd_args+=(${COMP_WORDS[@]:i})
+                break
+                ;;
+            -*)
+                continue
+                ;;
+            *)
+                subcmd_args+=("${word}")
+                ;;
+        esac
+    done
 
     if [[ "${cur}" == -* ]]; then
         # option names (from subcommands as well)
-        _comp_compgen_help -c forkm "${subcmd}" --help
+        if [[ -n "${subcmd}" ]]; then
+            __comp_cmd_forkm__compgen_from_help forkm "${subcmd}" --help
+        else
+            __comp_cmd_forkm__compgen_from_help forkm --help
+        fi
         return
     elif [[ -n "${subcmd}" ]]; then
         # subcommand args
@@ -120,17 +185,21 @@ _comp_cmd_forkm() {
     elif [[ "${argopts}" == *\ "${prev}"\ * ]]; then
         # 'forkm' option args
         case "${prev}" in
-            -R) _comp_compgen_filedir
+            -R)
+                COMPREPLY=( $(compgen -o dirnames -- "${cur}") )
                 return
                 ;;
         esac
     else
         # subcommand names
-        _comp_compgen_split "${subcmds}"
+        COMPREPLY=( $(compgen -W "${subcmds}" -- "${cur}") )
         return
     fi
 }
 
-if complete -p git 2>/dev/null || __load_completion git; then
+if complete -p git 2>/dev/null ||
+        # bash-completion loaders
+        # (__load_completion was deprecated in favor of _comp_load in 2.12)
+        _comp_load git 2>/dev/null || __load_completion git; then
     complete -F _comp_cmd_forkm forkm
 fi
