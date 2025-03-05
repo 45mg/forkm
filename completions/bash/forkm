@@ -24,6 +24,78 @@
 # We will attempt to load them using the loader functions from the
 # bash-completion package, if available.
 
+
+
+_comp_cmd_forkm() {
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+    local prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    local argopts=" -R "
+    local subcmds=" track add list ls untrack rm bump update patch unpatch "
+    local subcmd
+    local -a subcmd_args=()
+
+    # Determine the current subcommand, if any.
+    local i
+    for((i=0;i<"${#COMP_WORDS[@]}";i++)); do
+        local word="${COMP_WORDS[$i]}"
+        # if the previous word wasn't an option to an arg...
+        if [[ -z "${prev_word}" ]] || [[ "${argopts}" != *\ "${prev_word}"\ * ]]; then
+            # and the current word is the name of a subcommand...
+            if [[ "${subcmds}" == *\ "${word}"\ * ]]; then
+                subcmd="${word}"
+                break
+            fi
+        fi
+        prev_word="${word}"
+    done
+    # Collect the remaining non-option arguments (subcommand args).
+    # (remember, this includes the word currently being typed!)
+    for((i=i+1;i<"${#COMP_WORDS[@]}";i++)); do
+        local word="${COMP_WORDS[$i]}"
+        case "${word}" in
+            --)
+                subcmd_args+=(${COMP_WORDS[@]:i})
+                break
+                ;;
+            -*)
+                continue
+                ;;
+            *)
+                subcmd_args+=("${word}")
+                ;;
+        esac
+    done
+
+    if [[ "${cur}" == -* ]]; then
+        # option names (from subcommands as well)
+        if [[ -n "${subcmd}" ]]; then
+            __comp_cmd_forkm__compgen_from_help forkm "${subcmd}" --help
+        else
+            __comp_cmd_forkm__compgen_from_help forkm --help
+        fi
+        return
+    elif [[ -n "${subcmd}" ]]; then
+        # subcommand args
+        __comp_cmd_forkm_"${subcmd}"
+        return
+    elif [[ "${argopts}" == *\ "${prev}"\ * ]]; then
+        # 'forkm' option args
+        case "${prev}" in
+            -R)
+                COMPREPLY=( $(compgen -o dirnames -- "${cur}") )
+                return
+                ;;
+        esac
+    else
+        # subcommand names
+        COMPREPLY=( $(compgen -W "${subcmds}" -- "${cur}") )
+        return
+    fi
+}
+
+
+
 # Usage: __comp_cmd_forkm__compgen_help cmd args...
 # Call CMD with ARGS, parse its output like GNU-style --help output, and add it
 # to COMPREPLY.
@@ -129,73 +201,6 @@ __comp_cmd_forkm_update() {
 }
 
 
-_comp_cmd_forkm() {
-    local cur="${COMP_WORDS[COMP_CWORD]}"
-    local prev="${COMP_WORDS[COMP_CWORD-1]}"
-
-    local argopts=" -R "
-    local subcmds=" track add list ls untrack rm bump update patch unpatch "
-    local subcmd
-    local -a subcmd_args=()
-
-    # Determine the current subcommand, if any.
-    local i
-    for((i=0;i<"${#COMP_WORDS[@]}";i++)); do
-        local word="${COMP_WORDS[$i]}"
-        # if the previous word wasn't an option to an arg...
-        if [[ -z "${prev_word}" ]] || [[ "${argopts}" != *\ "${prev_word}"\ * ]]; then
-            # and the current word is the name of a subcommand...
-            if [[ "${subcmds}" == *\ "${word}"\ * ]]; then
-                subcmd="${word}"
-                break
-            fi
-        fi
-        prev_word="${word}"
-    done
-    # Collect the remaining non-option arguments (subcommand args).
-    # (remember, this includes the word currently being typed!)
-    for((i=i+1;i<"${#COMP_WORDS[@]}";i++)); do
-        local word="${COMP_WORDS[$i]}"
-        case "${word}" in
-            --)
-                subcmd_args+=(${COMP_WORDS[@]:i})
-                break
-                ;;
-            -*)
-                continue
-                ;;
-            *)
-                subcmd_args+=("${word}")
-                ;;
-        esac
-    done
-
-    if [[ "${cur}" == -* ]]; then
-        # option names (from subcommands as well)
-        if [[ -n "${subcmd}" ]]; then
-            __comp_cmd_forkm__compgen_from_help forkm "${subcmd}" --help
-        else
-            __comp_cmd_forkm__compgen_from_help forkm --help
-        fi
-        return
-    elif [[ -n "${subcmd}" ]]; then
-        # subcommand args
-        __comp_cmd_forkm_"${subcmd}"
-        return
-    elif [[ "${argopts}" == *\ "${prev}"\ * ]]; then
-        # 'forkm' option args
-        case "${prev}" in
-            -R)
-                COMPREPLY=( $(compgen -o dirnames -- "${cur}") )
-                return
-                ;;
-        esac
-    else
-        # subcommand names
-        COMPREPLY=( $(compgen -W "${subcmds}" -- "${cur}") )
-        return
-    fi
-}
 
 if complete -p git 2>/dev/null ||
         # bash-completion loaders
