@@ -28,9 +28,7 @@ check:
 
 install:
 	mkdir -p $(PREFIX)/bin
-	for f in forkm*; do \
-		install -m 0755 "$$f" $(PREFIX)/bin/"$$f"; \
-	done
+	install -m 0755 forkm* $(PREFIX)/bin/
 
 doc: # TODO (man pages)
 
