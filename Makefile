@@ -35,6 +35,6 @@ install:
 
 doc: # TODO (man pages)
 
-clean:
+uninstall:
 	rm -f $(PREFIX)/bin/forkm*
 	rm -f $(BASHCOMPDIR)/forkm
