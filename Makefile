@@ -28,13 +28,13 @@ check:
 	./tests
 
 install:
-	mkdir -p $(PREFIX)/bin
-	install -m 0755 forkm* $(PREFIX)/bin/
-	mkdir -p $(BASHCOMPDIR)
-	install -m 644 completions/bash/* $(BASHCOMPDIR)
+	mkdir -p $(DESTDIR)$(PREFIX)/bin
+	install -m 0755 forkm* $(DESTDIR)$(PREFIX)/bin/
+	mkdir -p $(DESTDIR)$(BASHCOMPDIR)
+	install -m 644 completions/bash/* $(DESTDIR)$(BASHCOMPDIR)
 
 doc: # TODO (man pages)
 
 uninstall:
-	rm -f $(PREFIX)/bin/forkm*
-	rm -f $(BASHCOMPDIR)/forkm
+	rm -f $(DESTDIR)$(PREFIX)/bin/forkm*
+	rm -f $(DESTDIR)$(BASHCOMPDIR)/forkm
