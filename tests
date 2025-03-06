@@ -195,6 +195,8 @@ git_C_quiet push origin '*:*'
 # 'forkm list' and 'forkm untrack' need to loop over every file in the tracker
 # directory. In a linked worktree, detecting the tracker directory is nontrivial
 # (.git is a file, for example). Hence this test.
+# TODO this is no longer the case. It's still good to test whether things work
+# in linked worktrees, though. Maybe run all tests again with a linked worktree?
 echo "Testing 'forkm list' and 'forkm untrack' in a linked worktree..."
 cleanup
 init_repo

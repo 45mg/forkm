@@ -62,3 +62,12 @@ util_split_branch_name() {
         printf '%s' "$1"
     fi
 }
+
+# Get all trackers and their targets.
+# We use '~' as the separator here because it's invalid in refnames
+# (see git-check-ref-format(1))
+util_tracker_target_pairs() {
+    git for-each-ref \
+        --format='%(refname:lstrip=2)~%(symref:lstrip=2)' \
+        'refs/forkm/*'
+}
