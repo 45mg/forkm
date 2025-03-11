@@ -126,6 +126,8 @@ else
 fi
 
 patch_branch_list="$("${FORKM_PATH}"/forkm-list --oneline)"
+# Make a list of existing or created list of cherry-picked branches
+picked_branch_list=""
 
 git=git
 if [ ${dry_run} -ne 0 ]; then
@@ -144,17 +146,17 @@ for branch in ${patch_branch_list}; do
             ${git} cherry-pick -- "${upstream}".."${branch}"
         fi
     fi
+    if [ -n "$(git branch --list -- "${new_branch}")" ]; then
+        picked_branch_list="${picked_branch_list} ${new_branch}"
+    fi
 done
 
 if [ ${only_pick} -eq 0 ]; then
-    for branch in ${patch_branch_list}; do
-        new_branch="${fork}"_"${branch}"
-        if [ -n "$(git branch --list -- "${new_branch}")" ]; then
-            util_info "Merging ${new_branch} into ${fork}..."
-            ${git} switch --quiet -- "${fork}"
-            # --no-ff: always create a merge commit, so that 'forkm unpatch' can
-            # revert the merge easily
-            ${git} merge --no-ff --no-edit -- "${new_branch}"
-        fi
+    for branch in ${picked_branch_list}; do
+        util_info "Merging ${branch} into ${fork}..."
+        ${git} switch --quiet -- "${fork}"
+        # --no-ff: always create a merge commit, so that 'forkm unpatch' can
+        # revert the merge easily
+        ${git} merge --no-ff --no-edit -- "${branch}"
     done
 fi
