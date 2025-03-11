@@ -36,6 +36,17 @@ util_error() {
     printf >&2 "${FORKM_COMMAND}: error: %s\n" "$*"
 }
 
+util_globmatch () {
+    case "$2" in
+        $1)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
 util_guess_upstream_branch() {
     if [ -n "$(git branch --list main)" ]; then
         printf '%s' main
