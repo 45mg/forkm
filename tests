@@ -390,7 +390,7 @@ echo "Testing 'forkm unpatch'..."
 echo "...undoes 'forkm patch'"
 cleanup
 init_patched
-forkm_R_quiet unpatch fork
+forkm_R_quiet unpatch fork fork_init
 debug_git_C_log
 for i in a b c; do
     test -e "${testdir}"/"$i" && exit 1
@@ -402,7 +402,7 @@ init_patched
 for b in ba bb bc; do
     forkm_R_quiet untrack "$b"
 done
-forkm_R_quiet unpatch --lax fork
+forkm_R_quiet unpatch --lax fork fork_init
 debug_git_C_log
 for i in a b c; do
     test -e "${testdir}"/"$i" && exit 1

@@ -31,7 +31,7 @@ More precisely, revert every merge commit in <fork_branch> whose second parent
 is pointed to by a branch named '<fork_branch>_<branch>', where <branch> is any
 tracked fork branch.
 
-Only considers merge commits after (ie. not reachable from) <upstream_branch>.
+Only considers merge commits that are descendants of <upstream_branch>.
 <upstream_branch> defaults to 'main' or 'master', in that order; you can specify
 any ref or commit.
 
@@ -119,7 +119,7 @@ globmatch () {
 }
 
 # merges reachable from $fork, but not from $upstream
-merge_commits=$(git rev-list --merges ^"${upstream}" "${fork}")
+merge_commits=$(git rev-list --merges --ancestry-path "${upstream}".."${fork}")
 # list of tracked branches
 patch_branch_list=""
 # if $lax is true, we won't check if a branch is in $patch_branch_list, so no
