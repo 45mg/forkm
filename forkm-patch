@@ -116,6 +116,7 @@ if [ $# -eq 0 ] || [ $# -gt 2 ]; then
     exit 1
 fi
 fork="$1"
+base="${base:-"$fork"}"
 shift
 upstream=""
 if [ $# -eq 1 ]; then
@@ -135,10 +136,10 @@ for branch in ${patch_branch_list}; do
     new_branch="${fork}"_"${branch}"
     if [ ${only_merge} -eq 0 ]; then
         if [ -z "$(git branch --list -- "${new_branch}")" ] ||
-               [ "$(git merge-base -- "${base:-fork}" "${new_branch}")" \
-                   != "$(git rev-parse "${base:-fork}")" ]; then
-            util_info "Cherry-picking ${branch} onto '${base:-fork}' as ${new_branch}..."
-            ${git} branch -f -- "${new_branch}" "${base:-fork}"
+               [ "$(git merge-base -- "${base}" "${new_branch}")" \
+                   != "$(git rev-parse "${base}")" ]; then
+            util_info "Cherry-picking ${branch} onto '${base}' as ${new_branch}..."
+            ${git} branch -f -- "${new_branch}" "${base}"
             ${git} switch --quiet "${new_branch}"
             ${git} cherry-pick -- "${upstream}".."${branch}"
         fi
