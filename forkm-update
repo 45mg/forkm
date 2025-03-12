@@ -31,20 +31,22 @@ Defaults to merging <upstream_branch> into <fork_branch>, but can also rebase
 commits (see options).
 
 Uses the '-X ours' merge strategy option to favor <fork_branch> in all
-conflicts.
-(TODO learn more about merge strategy to figure out if we should give more
-control)
+conflicts. (Hence, direct commits to <fork_branch> only contain changes that
+should always override <upstream_branch>; any other changes should be done using
+patch branches.)
 
 <upstream_branch> defaults to 'main' or 'master', in that order; you can specify
 any ref or commit.
 
 Options:
--r, --rebase   intead of merging, rebase commits onto <fork_branch>
--d, --dry-run  print, without executing, the commands that would be run
--q, --quiet    no warnings or info messages
--v, --verbose  run with 'set -x'
--h, --help     show this message and exit
--V, --version  show version information and exit
+-r, --rebase BASE  intead of merging, rebase commits starting from BASE onto
+                   <fork_branch>. This will tag <upstream_branch> to make
+                   specifying BASE easier next time.
+-d, --dry-run      print, without executing, the commands that would be run
+-q, --quiet        no warnings or info messages
+-v, --verbose      run with 'set -x'
+-h, --help         show this message and exit
+-V, --version      show version information and exit
 EOF
 }
 
@@ -68,7 +70,13 @@ while [ $# -gt 0 ]; do
             exit 0
             ;;
         -r | --rebase)
+            if [ $# -lt 2 ]; then
+                util_error "'--rebase' requires an argument"
+                exit 1
+            fi
             rebase=1
+            shift
+            base="$1"
             shift
             ;;
         -d | --dry-run)
@@ -115,8 +123,9 @@ fi
 if [ $rebase -ne 0 ]; then
     # XXX: '-X ours' means that fork changes will always win over upstream
     # changes.
-    ${git} rebase --rebase-merges -X ours --empty=keep -- \
-        "${fork}" "$(git rev-parse "${upstream}")"
+    ${git} rebase --rebase-merges -X ours --empty=keep \
+        --onto "${fork}" \
+        -- "$(git rev-parse "${base}")" "$(git rev-parse "${upstream}")"
     ${git} branch --force -- "${fork}"
     # TODO allow disabling tagging; should it be done for merges?
     ${git} tag forkm_update_"$(TZ=UTC date '+%Y%m%d_%H%M%S_utc')" "${fork}"
