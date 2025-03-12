@@ -63,11 +63,11 @@ util_guess_upstream_branch() {
 # If we succeed, output the branch name and version number separated by a space.
 # Otherwise, output the original input.
 util_split_branch_name() {
-    name=$(echo "$1" | sed -E 's/-v[0-9]+$//')
+    name=$(echo "$1" | sed -E 's/\.[0-9]+$//')
     version_suffix=
     if [ "${name}" != "$1" ]; then
         version_suffix="${1##"$name"}"
-        version_number="${version_suffix##-v}"
+        version_number="${version_suffix##.}"
         printf '%s %s' "${name}" "${version_number}"
     else
         printf '%s' "$1"

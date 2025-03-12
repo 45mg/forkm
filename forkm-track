@@ -84,7 +84,7 @@ for branch in ${branch_list}; do
 	EOF
     if [ -z "${version}" ]; then
         util_warn \
-            "branch name '${branch}' lacks version suffix; '-v1' will be implied"
+            "branch name '${branch}' lacks version suffix; '.1' will be implied"
     fi
     git symbolic-ref -- refs/forkm/"${name}" refs/heads/"${branch}"
 done

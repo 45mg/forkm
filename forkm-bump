@@ -121,7 +121,7 @@ for branch in ${patch_branch_list}; do
 	EOF
     version="${version:-1}"
     [ ${increment} -ne 0 ] && version=$((version+1))
-    new_branch="${name}"-v"${version}"
+    new_branch="${name}"."${version}"
     if [ ${dry_run} -ne 0 ] ||
            # Only rebase if it's not already based on $upstream
            [ "$(git merge-base -- "${branch}" "${upstream}")" \

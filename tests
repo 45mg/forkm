@@ -117,7 +117,7 @@ echo "Testing 'forkm track'..."
 init_repo
 
 echo "...on branches with no version suffix"
-for b in b1 b2-v-12; do
+for b in b1 b2.a12; do
     git_C_quiet branch "$b"
     forkm_R_quiet track "$b"
     test "$(git_C rev-parse --symbolic-full-name refs/forkm/"$b")" \
@@ -125,13 +125,13 @@ for b in b1 b2-v-12; do
 done
 
 echo "...on branches with version suffixes"
-git_C_quiet branch b3-v12
-git_C_quiet branch b4-v1-v23
-forkm_R_quiet track b3-v12 b4-v1-v23
+git_C_quiet branch b3.12
+git_C_quiet branch b4.1.23
+forkm_R_quiet track b3.12 b4.1.23
 test "$(git_C rev-parse --symbolic-full-name refs/forkm/b3)" \
-    = refs/heads/b3-v12
-test "$(git_C rev-parse --symbolic-full-name refs/forkm/b4-v1)" \
-    = refs/heads/b4-v1-v23
+    = refs/heads/b3.12
+test "$(git_C rev-parse --symbolic-full-name refs/forkm/b4.1)" \
+    = refs/heads/b4.1.23
 
 echo "...on nonexistent branches (should not track)"
 forkm_R_quiet track dangling
@@ -142,20 +142,20 @@ echo "Testing 'forkm list'..."
 echo "...--quiet and --oneline output"
 test "$(forkm_R list --quiet)" \
     = 'b1
-b2-v-12
-b3-v12
-b4-v1-v23'
+b2.a12
+b3.12
+b4.1.23'
 test "$(forkm_R list --oneline)" \
-    = 'b1 b2-v-12 b3-v12 b4-v1-v23 '
+    = 'b1 b2.a12 b3.12 b4.1.23 '
 echo "...output with dangling trackers"
 git_C_quiet branch --quiet dangling
 forkm_R_quiet track dangling
 git_C_quiet branch --quiet -D dangling
 test "$(forkm_R list --quiet)" \
     = 'b1
-b2-v-12
-b3-v12
-b4-v1-v23'
+b2.a12
+b3.12
+b4.1.23'
 echo "...when there are no trackers"
 mv "${testdir}/.git/refs/forkm" "${testdir}/.git/refs/forkm_"
 test -z "$(forkm_R list)"
@@ -163,10 +163,10 @@ mv "${testdir}/.git/refs/forkm_" "${testdir}/.git/refs/forkm"
 
 echo "Testing 'forkm untrack'..."
 echo "...on valid trackers"
-forkm_R_quiet untrack b1 b2-v-12
+forkm_R_quiet untrack b1 b2.a12
 git_C_quiet rev-parse --symbolic-full-name refs/forkm/b1 &&
     exit 1
-git_C_quiet rev-parse --symbolic-full-name refs/forkm/b2-v-12 &&
+git_C_quiet rev-parse --symbolic-full-name refs/forkm/b2.a12 &&
     exit 1
 echo "...on a dangling tracker"
 forkm_R_quiet untrack dangling
@@ -193,7 +193,7 @@ git_C_quiet push --set-upstream origin main
 echo "...pushing all refs"
 git_C_quiet push origin '*:*'
 echo "...pushing all refs after deleting a tracked branch"
-git_C_quiet branch -D b3-v12
+git_C_quiet branch -D b3.12
 git_C_quiet push origin '*:*'
 
 # 'forkm list' and 'forkm untrack' need to loop over every file in the tracker
@@ -289,21 +289,21 @@ done
 forkm_R_quiet bump
 debug_git_C_log
 for i in a b c; do
-    test "$(git_C rev-parse b"$i"-v2^)" = "$(git_C rev-parse main)"
+    test "$(git_C rev-parse b"$i".2^)" = "$(git_C rev-parse main)"
 done
 
 echo "......with version suffixes and --no-increment"
 cleanup
 init_fork
 for i in a b c; do
-    git_C_quiet switch --create b"$i"-v1 main^
-    forkm_R_quiet track b"$i"-v1
+    git_C_quiet switch --create b"$i".1 main^
+    forkm_R_quiet track b"$i".1
     git_C_quiet commit --allow-empty -m b"$i"1
 done
 forkm_R_quiet bump -n
 debug_git_C_log
 for i in a b c; do
-    test "$(git_C rev-parse b"$i"-v1^)" = "$(git_C rev-parse main)"
+    test "$(git_C rev-parse b"$i".1^)" = "$(git_C rev-parse main)"
 done
 
 echo "......with arbitrary commit as upstream, and non-empty commits"
@@ -319,18 +319,18 @@ done
 forkm_R_quiet bump main~
 debug_git_C_log
 for i in a b c; do
-    test "$(git_C rev-parse b"$i"-v2^)" = "$(git_C rev-parse main~)"
+    test "$(git_C rev-parse b"$i".2^)" = "$(git_C rev-parse main~)"
 done
 
 echo "...doesn't increase the version suffix for up-to-date branches"
 cleanup
 init_fork
-git_C_quiet switch --create b-v1 main
-forkm_R_quiet track b-v1
+git_C_quiet switch --create b.1 main
+forkm_R_quiet track b.1
 git_C_quiet commit --allow-empty -m b1
 forkm_R_quiet bump
 debug_git_C_log
-test "$(git_C rev-parse --branches='b-v*')" = "$(git_C rev-parse b-v1)"
+test "$(git_C rev-parse --branches='b.*')" = "$(git_C rev-parse b.1)"
 
 echo "Testing 'forkm patch'..."
 
