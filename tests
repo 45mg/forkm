@@ -256,11 +256,11 @@ debug_git_C_log
 test "$(git_C rev-parse HEAD^)" = "$(git_C rev-parse fork_init)"
 test "$(git_C rev-parse HEAD^2)" = "$(git_C rev-parse master)"
 
-echo "...'--rebase's the right commits"
+echo "...rebases the right commits with --rebase-from"
 cleanup
 init_fork
 debug_git_C_log
-forkm_R_quiet update --rebase init fork
+forkm_R_quiet update --rebase-from init fork
 debug_git_C_log
 test "$(git_C_log_subject_only init..)" \
     = 'm3 m2 m1 f1'
@@ -269,7 +269,7 @@ echo "......respects --no-tag"
 cleanup
 init_fork
 debug_git_C_log
-forkm_R_quiet update --no-tag --rebase init fork
+forkm_R_quiet update --no-tag --rebase-from init fork
 debug_git_C_log
 test "$(git_C_tags_oneline)" \
     = 'fork_init init '

@@ -50,7 +50,7 @@ _comp_cmd_forkm() {
     done
     # Collect the remaining non-option arguments (subcommand args).
     # (remember, this includes the word currently being typed!)
-    local subcmd_argopts=" --base -r --rebase "
+    local subcmd_argopts=" --base -r --rebase-from "
     local -a subcmd_args=()
     for((i=i+1;i<"${#COMP_WORDS[@]}";i++)); do
         local word="${COMP_WORDS[$i]}"
@@ -205,7 +205,7 @@ __comp_cmd_forkm_unpatch() {
 
 __comp_cmd_forkm_update() {
     case "${prev}" in
-        -r | --rebase)
+        -r | --rebase-from)
             __git_complete_refs
             return
     esac

@@ -39,7 +39,8 @@ patch branches.)
 any ref or commit.
 
 Options:
--r, --rebase BASE  intead of merging, rebase commits starting from BASE onto
+-r, --rebase-from BASE
+                   intead of merging, rebase commits starting from BASE onto
                    <fork_branch>. This will tag <upstream_branch> to make
                    specifying BASE easier next time.
 -T, --no-tag       Don't do the tagging mentioned above.
@@ -71,9 +72,9 @@ while [ $# -gt 0 ]; do
             printf "forkm: version %s\n" "${FORKM_VERSION}"
             exit 0
             ;;
-        -r | --rebase)
+        -r | --rebase-from)
             if [ $# -lt 2 ]; then
-                util_error "'--rebase' requires an argument"
+                util_error "'--rebase-from' requires an argument"
                 exit 1
             fi
             rebase=1
