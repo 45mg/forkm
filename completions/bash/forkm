@@ -33,10 +33,9 @@ _comp_cmd_forkm() {
     local argopts=" -R "
     local subcmds=" track add list ls untrack rm bump update patch unpatch "
     local subcmd
-    local -a subcmd_args=()
 
     # Determine the current subcommand, if any.
-    local i
+    local i prev_word
     for((i=0;i<"${#COMP_WORDS[@]}";i++)); do
         local word="${COMP_WORDS[$i]}"
         # if the previous word wasn't an option to an arg...
@@ -51,8 +50,11 @@ _comp_cmd_forkm() {
     done
     # Collect the remaining non-option arguments (subcommand args).
     # (remember, this includes the word currently being typed!)
+    local subcmd_argopts=" --base -r --rebase "
+    local -a subcmd_args=()
     for((i=i+1;i<"${#COMP_WORDS[@]}";i++)); do
         local word="${COMP_WORDS[$i]}"
+        local prev_word="${COMP_WORDS[$i-1]}" # i >=1, so this is fine
         case "${word}" in
             --)
                 subcmd_args+=(${COMP_WORDS[@]:i})
@@ -62,7 +64,12 @@ _comp_cmd_forkm() {
                 continue
                 ;;
             *)
-                subcmd_args+=("${word}")
+                # IF it's not the argument to an option...
+                if [[ -z "${prev_word}" ]] || \
+                    [[ "${subcmd_argopts}" != *\ "${prev_word}"\ * ]]; then
+                    # ..then its a subcommand arg.
+                    subcmd_args+=("${word}")
+                fi
                 ;;
         esac
     done
@@ -197,6 +204,11 @@ __comp_cmd_forkm_unpatch() {
 }
 
 __comp_cmd_forkm_update() {
+    case "${prev}" in
+        -r | --rebase)
+            __git_complete_refs
+            return
+    esac
     __comp_cmd_forkm_unpatch # same arguments
 }
 
