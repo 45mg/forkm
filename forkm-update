@@ -42,6 +42,7 @@ Options:
 -r, --rebase BASE  intead of merging, rebase commits starting from BASE onto
                    <fork_branch>. This will tag <upstream_branch> to make
                    specifying BASE easier next time.
+-T, --no-tag       Don't do the tagging mentioned above.
 -d, --dry-run      print, without executing, the commands that would be run
 -q, --quiet        no warnings or info messages
 -v, --verbose      run with 'set -x'
@@ -56,6 +57,7 @@ if [ $# -eq 0 ]; then
 fi
 
 rebase=0
+no_tag=0
 dry_run=0
 quiet=0
 # Parse flags
@@ -77,6 +79,10 @@ while [ $# -gt 0 ]; do
             rebase=1
             shift
             base="$1"
+            shift
+            ;;
+        -T | --no-tag)
+            no_tag=1
             shift
             ;;
         -d | --dry-run)
@@ -127,8 +133,9 @@ if [ $rebase -ne 0 ]; then
         --onto "${fork}" \
         -- "$(git rev-parse "${base}")" "$(git rev-parse "${upstream}")"
     ${git} branch --force -- "${fork}"
-    # TODO allow disabling tagging; should it be done for merges?
-    ${git} tag forkm_update_"$(TZ=UTC date '+%Y%m%d_%H%M%S_utc')" "${fork}"
+    if [ ${no_tag} -eq 0 ]; then
+        ${git} tag forkm_update_"$(TZ=UTC date '+%Y%m%d_%H%M%S_utc')" "${fork}"
+    fi
     ${git} switch --quiet -- "${fork}"
 else
     ${git} switch --quiet -- "${fork}"

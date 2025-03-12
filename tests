@@ -68,8 +68,12 @@ forkm_R_quiet() {
     fi
 }
 
+# Show only commit message subjects, in one line.
 git_C_log_subject_only() {
-    git_C log -z --pretty=format:%s "$1" | tr '\0' ' '
+    git_C -P log -z --pretty=format:%s "$1" | tr '\0' ' '
+}
+git_C_tags_oneline() {
+    git_C -P tag -l --sort=refname | tr "\n" ' '
 }
 
 debug_git_C_log() {
@@ -260,6 +264,15 @@ forkm_R_quiet update --rebase init fork
 debug_git_C_log
 test "$(git_C_log_subject_only init..)" \
     = 'm3 m2 m1 f1'
+
+echo "......respects --no-tag"
+cleanup
+init_fork
+debug_git_C_log
+forkm_R_quiet update --no-tag --rebase init fork
+debug_git_C_log
+test "$(git_C_tags_oneline)" \
+    = 'fork_init init '
 
 echo "Testing 'forkm bump'..."
 
