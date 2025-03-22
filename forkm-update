@@ -135,9 +135,9 @@ if [ $rebase -ne 0 ]; then
         -- "$(git rev-parse "${base}")" "$(git rev-parse "${upstream}")"
     ${git} branch --force -- "${fork}"
     if [ ${no_tag} -eq 0 ]; then
-        tagname=forkm_update_"$(TZ=UTC date '+%Y%m%d_%H%M%S_utc')"
-        ${git} tag "${tagname}"_"${fork}" "${fork}"
-        ${git} tag "${tagname}"_"${upstream}" "${upstream}"
+        tag_date="$(TZ=UTC date '+%Y%m%d_%H%M%S_utc')"
+        ${git} tag forkm_update-"${fork}"-"${tag_date}" "${fork}"
+        ${git} tag forkm_update-"${upstream}"-"${tag_date}" "${upstream}"
     fi
     ${git} switch --quiet -- "${fork}"
 else
