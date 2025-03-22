@@ -59,7 +59,7 @@ util_guess_upstream_branch() {
 }
 
 # Attempt to split the version number suffix from a branch name.
-# eg. split 'foo-bar-v3' into 'foo-bar' and '-v3'.
+# eg. split 'foo-bar-v3.2' into 'foo-bar-v3' and '2'.
 # If we succeed, output the branch name and version number separated by a space.
 # Otherwise, output the original input.
 util_split_branch_name() {
