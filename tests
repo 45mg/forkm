@@ -289,7 +289,7 @@ done
 forkm_R_quiet bump
 debug_git_C_log
 for i in a b c; do
-    test "$(git_C rev-parse b"$i".2^)" = "$(git_C rev-parse main)"
+    test "$(git_C rev-parse b"$i".1^)" = "$(git_C rev-parse main)"
 done
 
 echo "......with version suffixes and --no-increment"
@@ -319,7 +319,7 @@ done
 forkm_R_quiet bump main~
 debug_git_C_log
 for i in a b c; do
-    test "$(git_C rev-parse b"$i".2^)" = "$(git_C rev-parse main~)"
+    test "$(git_C rev-parse b"$i".1^)" = "$(git_C rev-parse main~)"
 done
 
 echo "...doesn't increase the version suffix for up-to-date branches"
